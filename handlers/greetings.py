@@ -147,6 +147,16 @@ async def on_new_members(message: Message, bot: Bot) -> None:
         if member.is_bot:
             continue
 
+        # Yangi qo'shilgan a'zoni darhol "known_members" ga yozamiz -
+        # shu bilan @admin ping va /tag funksiyalari uni birinchi
+        # xabarini kutmasdan darhol chaqira oladigan bo'ladi.
+        try:
+            await db.upsert_known_member(
+                message.chat.id, member.id, member.full_name, member.username
+            )
+        except Exception:
+            pass
+
         # Federatsiya (premium funksiya): agar bu odam federatsiyaning
         # boshqa guruhida banlangan bo'lsa, shu yerga qo'shilishi bilanoq
         # avtomatik chiqarib yuboramiz.
@@ -204,6 +214,12 @@ async def on_left_member(message: Message, bot: Bot) -> None:
         mention = mention_html(member.id, member.full_name)
         text = goodbye_text.format(mention=mention) if goodbye_text else texts.DEFAULT_GOODBYE.format(mention=mention)
         await message.answer(text)
+        # Chiqib ketgan a'zoni ro'yxatdan olib tashlaymiz - aks holda
+        # @admin ping/@tag uni "ko'rinmas" holda chaqirib yuborardi.
+        try:
+            await db.remove_known_member(message.chat.id, member.id)
+        except Exception:
+            pass
 
     if clean_service:
         try:

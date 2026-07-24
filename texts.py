@@ -57,6 +57,15 @@ HELP = (
     "/fnew nom - federatsiya yaratish\n"
     "/fjoin fed_id - guruhni federatsiyaga qo'shish\n"
     "/fban, /funban, /finfo, /fleave\n\n"
+    "<b>👥 Adminlik va chaqirish:</b>\n"
+    "@admin yoki @admins - adminlarni chaqirish\n"
+    "/adminber - kimnidir admin qilish (faqat guruh egasi)\n"
+    "/adminol - adminlikdan olish (faqat guruh egasi)\n"
+    "/tag [matn] - ko'rilgan barcha a'zolarni chaqirish\n"
+    "/staff - guruh adminlari ro'yxati\n"
+    "/achi - bot haqida ma'lumot\n\n"
+    "<b>🔫 CS2 narxlari (agar yoqilgan bo'lsa):</b>\n"
+    ".skin AK-47 | Redline - Steam Market'dagi narxini so'mda ko'rsatadi\n\n"
     "Savol-tavsiya bo'lsa, guruh adminlariga yozing-a 🌹"
 )
 
@@ -349,3 +358,111 @@ FED_REQUIRES_PREMIUM = (
 
 EXPORT_GENERATING = "CSV fayl tayyorlanyapti..."
 EXPORT_CAPTION = "📁 CSV eksport — {period}, {chat_title}"
+
+
+# ------------------------------------------------------------------
+# @admin/@admins ping
+# ------------------------------------------------------------------
+
+ADMIN_PING_HEADER = "🆘 {caller} adminlarni chaqiryapti:"
+ADMIN_PING_NO_ADMINS = "Bu guruhda hech qanaqa admin topilmadi ekan, qiziq."
+ADMIN_PING_COOLDOWN = (
+    "Sabr qiling-a, adminlarni {seconds} soniyada bir marta chaqirish mumkin."
+)
+
+# ------------------------------------------------------------------
+# /adminber, /adminol (bot orqali admin qilish/olib tashlash)
+# ------------------------------------------------------------------
+
+ADMINBER_USAGE = (
+    "Kimni admin qilishni ko'rsating: xabariga reply qilib /adminber yozing, "
+    "yoki @username/ID bilan: /adminber @username"
+)
+ADMINBER_ONLY_OWNER = (
+    "Bu buyruqni faqat guruh EGASI (creator) ishlata oladi-a, oddiy adminga "
+    "bermaganman ataylab - xavfsizlik uchun."
+)
+ADMINBER_CANT_PROMOTE_ADMIN = "Bu odam allaqachon admin ekan-ku."
+ADMINBER_DONE = (
+    "✅ {target} endi admin! Ban, mute, xabar o'chirish va a'zo qo'shish "
+    "huquqlari berildi.\nBuni qilgan: {admin}"
+)
+ADMINOL_USAGE = (
+    "Kimdan adminlikni olishni ko'rsating: xabariga reply qilib /adminol yozing, "
+    "yoki @username/ID bilan: /adminol @username"
+)
+ADMINOL_ONLY_OWNER = (
+    "Bu buyruqni faqat guruh EGASI (creator) ishlata oladi-a."
+)
+ADMINOL_NOT_BOT_PROMOTED = (
+    "Bu odamni ACHI BOT admin qilmagan ekan (balki Telegram orqali to'g'ridan-to'g'ri "
+    "admin qilingan) - shu sabab botdan olib tashlay olmayman, Telegram guruh "
+    "sozlamalaridan o'zingiz olib tashlashingiz kerak bo'ladi."
+)
+ADMINOL_DONE = "✅ {target}dan adminlik olib tashlandi.\nBuni qilgan: {admin}"
+ADMINOL_CANT_TARGET_OWNER = "Guruh egasidan adminlikni olib bo'lmaydi-a 😄"
+
+# ------------------------------------------------------------------
+# /tag - a'zolarni chaqirish
+# ------------------------------------------------------------------
+
+TAG_USAGE = (
+    "/tag [matn] - guruhdagi barcha a'zolarni (bot ko'rib turgan) chaqiradi, "
+    "xohlasangiz oldin matn qo'shing: /tag Assalomu alaykum, yig'ilishga marhamat"
+)
+TAG_NO_MEMBERS = (
+    "Hozircha hech kimni chaqira olmayman - a'zolar guruhda yozgandan keyin "
+    "ro'yxatga tushadi. Birozdan keyin qayta urinib ko'ring."
+)
+TAG_STARTED = "📣 {count} kishi chaqirilyapti..."
+TAG_ONLY_ADMIN = "Bu buyruqni faqat adminlar ishlata oladi-a, hammaboyni chaqirib yubormaylik."
+
+
+# ------------------------------------------------------------------
+# CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+# ------------------------------------------------------------------
+
+CS2_MARKET_USAGE = (
+    "Shunday yozing: .skin AK-47 | Redline (Field-Tested)\n"
+    "yoki: .oruzhiya AWP | Asiimov (Battle-Scarred)\n"
+    "Nom Steam Market'dagi nom bilan bir xil bo'lishi kerak-a."
+)
+CS2_MARKET_SEARCHING = "🔍 \"{name}\" qidirilyapti, biroz kuting..."
+CS2_MARKET_NOT_FOUND = (
+    "Bunaqa buyum topilmadi-a. Nomni Steam Market'dagidek to'liq yozib ko'ring "
+    "(masalan: AK-47 | Redline (Field-Tested))."
+)
+CS2_MARKET_RESULT = (
+    "🔫 <b>{name}</b>\n\n"
+    "💵 Narxi: <b>${usd}</b>\n"
+    "💰 So'mda: <b>{uzs} so'm</b>\n"
+)
+CS2_MARKET_RESULT_WITH_VOLUME = CS2_MARKET_RESULT + "📦 So'nggi 24 soatda sotilgan: {volume} ta\n"
+CS2_MARKET_ERROR = (
+    "Steam Market hozir javob bermayapti, birozdan keyin qayta urinib ko'ring-a."
+)
+CS2_MARKET_COOLDOWN = "Sabr qiling-a, {seconds} soniyada bir marta so'rov yuborish mumkin."
+CS2_MARKET_DISABLED = "CS2 narx qidiruvi bu guruhda o'chirilgan."
+
+# ------------------------------------------------------------------
+# /staff - adminlar ro'yxati
+# ------------------------------------------------------------------
+
+STAFF_HEADER = "👮 <b>{chat_title} - adminlar:</b>\n"
+STAFF_OWNER_LINE = "👑 {mention} — egasi"
+STAFF_ADMIN_LINE = "🛡 {mention} — admin"
+STAFF_EMPTY = "Bu guruhda hech qanaqa admin topilmadi, qiziq ekan."
+
+# ------------------------------------------------------------------
+# /achi - bot haqida
+# ------------------------------------------------------------------
+
+ACHI_ABOUT = (
+    "🌹 <b>ACHI BOT</b>\n\n"
+    "Guruhingizni tozalab-yig'ishtirib turadigan, sof Toshkent shevasida "
+    "gaplashadigan yordamchi botman.\n\n"
+    "🛡 Moderatsiya, captcha, filtr, eslatma, hisobot (PDF/CSV)\n"
+    "⭐ Premium: federatsiya, cheksiz filtr/eslatma (Telegram Stars orqali)\n"
+    "🔫 CS2 skinlarining Steam Market narxini so'mda ko'rsataman\n\n"
+    "Buyruqlar ro'yxati uchun /help yozing."
+)

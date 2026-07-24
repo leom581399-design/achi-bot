@@ -127,6 +127,34 @@ CREATE TABLE IF NOT EXISTS pending_captcha (
     expires_at REAL NOT NULL,
     PRIMARY KEY (chat_id, user_id)
 );
+
+-- Telegram Bot API'da "guruhdagi barcha a'zolarni olish" degan tayyor
+-- metod yo'q (faqat kanal/kichik guruhlar uchun cheklangan holatda
+-- ishlaydi). Shu sabab @admin/@admins ping va /tag funksiyalari uchun
+-- guruhda kim yozganini "ko'rib qolgan sari" shu jadvalga yozib boramiz.
+CREATE TABLE IF NOT EXISTS known_members (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    full_name TEXT,
+    username TEXT,
+    last_seen REAL NOT NULL,
+    PRIMARY KEY (chat_id, user_id)
+);
+
+-- Botning o'zi (SUPER_ADMINS yoki guruh egasi) tomonidan /adminber orqali
+-- "bot darajasida" admin qilingan foydalanuvchilar. Bu Telegram'ning
+-- haqiqiy admin ro'yxatidan ALOHIDA - chunki bot Telegram API orqali
+-- promote_chat_member chaqirib, HAQIQIY Telegram adminligini beradi;
+-- shu jadval esa faqat "kim ACHI BOT orqali admin qilingan" tarixini
+-- yuritish uchun (keyinchalik /adminol bilan olib tashlash, hisobot
+-- uchun kerak bo'ladi).
+CREATE TABLE IF NOT EXISTS bot_promoted_admins (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    promoted_by INTEGER NOT NULL,
+    promoted_at REAL NOT NULL,
+    PRIMARY KEY (chat_id, user_id)
+);
 """
 
 
@@ -643,6 +671,80 @@ class Database:
         )
         row = await cursor.fetchone()
         return int(row["c"]) if row else 0
+
+    # ------------------------------------------------------------------
+    # known_members (@admin ping va /tag uchun a'zolar ro'yxati)
+    # ------------------------------------------------------------------
+
+    async def upsert_known_member(
+        self, chat_id: int, user_id: int, full_name: str | None, username: str | None
+    ) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO known_members (chat_id, user_id, full_name, username, last_seen)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO UPDATE SET
+                full_name = excluded.full_name,
+                username = excluded.username,
+                last_seen = excluded.last_seen
+            """,
+            (chat_id, user_id, full_name, username, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_known_member(self, chat_id: int, user_id: int) -> None:
+        await self.conn.execute(
+            "DELETE FROM known_members WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        await self.conn.commit()
+
+    async def list_known_members(
+        self, chat_id: int, exclude_user_id: int | None = None
+    ) -> list[aiosqlite.Row]:
+        if exclude_user_id is not None:
+            cursor = await self.conn.execute(
+                "SELECT * FROM known_members WHERE chat_id = ? AND user_id != ?",
+                (chat_id, exclude_user_id),
+            )
+        else:
+            cursor = await self.conn.execute(
+                "SELECT * FROM known_members WHERE chat_id = ?", (chat_id,)
+            )
+        return await cursor.fetchall()
+
+    # ------------------------------------------------------------------
+    # bot_promoted_admins (/adminber, /adminol tarixi)
+    # ------------------------------------------------------------------
+
+    async def add_bot_promoted_admin(
+        self, chat_id: int, user_id: int, promoted_by: int
+    ) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO bot_promoted_admins (chat_id, user_id, promoted_by, promoted_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO UPDATE SET
+                promoted_by = excluded.promoted_by, promoted_at = excluded.promoted_at
+            """,
+            (chat_id, user_id, promoted_by, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_bot_promoted_admin(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM bot_promoted_admins WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def is_bot_promoted_admin(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "SELECT 1 FROM bot_promoted_admins WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        return await cursor.fetchone() is not None
 
 
 db = Database(settings.db_path)

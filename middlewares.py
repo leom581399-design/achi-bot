@@ -30,6 +30,14 @@ from utils import is_chat_admin, mention_html
 
 _known_chats: set[int] = set()
 
+# Telegram Bot API'da "guruhdagi barcha a'zolarni olish" degan tayyor
+# metod yo'q, shu sabab @admin/@admins ping va /tag funksiyalari uchun
+# har bir xabar yozgan odamni "known_members" jadvaliga yozib boramiz.
+# Har xabarda DB'ga yozmaslik uchun (keraksiz yuklama bo'lmasin), bitta
+# odamni har 5 daqiqada faqat bir marta yangilaymiz.
+_MEMBER_TRACK_INTERVAL_SEC = 5 * 60
+_member_last_tracked: dict[tuple[int, int], float] = {}
+
 
 class EnsureChatMiddleware(BaseMiddleware):
     async def __call__(
@@ -52,7 +60,30 @@ class EnsureChatMiddleware(BaseMiddleware):
                 pass
             _known_chats.add(chat.id)
 
+        await self._track_member(event, chat)
+
         return await handler(event, data)
+
+    async def _track_member(self, event: TelegramObject, chat) -> None:
+        if chat is None or chat.type not in ("group", "supergroup"):
+            return
+
+        inner = event.event if isinstance(event, Update) else event
+        user = getattr(inner, "from_user", None)
+        if user is None or user.is_bot:
+            return
+
+        key = (chat.id, user.id)
+        now = time.time()
+        last = _member_last_tracked.get(key)
+        if last and now - last < _MEMBER_TRACK_INTERVAL_SEC:
+            return
+
+        try:
+            await db.upsert_known_member(chat.id, user.id, user.full_name, user.username)
+        except Exception:
+            pass
+        _member_last_tracked[key] = now
 
 
 _FLOOD_MUTE_SECONDS = 10 * 60

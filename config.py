@@ -78,6 +78,46 @@ class Settings:
     premium_lifetime_price_stars: int = 500
     premium_30d_days: int = 30
 
+    # ------------------------------------------------------------------
+    # @admin/@admins ping va /tag sozlamalari
+    # ------------------------------------------------------------------
+    # @admin yozilganda adminlarni qayta-qayta chaqirib "spam" bo'lib
+    # qolmasligi uchun, bir foydalanuvchi shu vaqt ichida faqat bir marta
+    # admin(lar)ni chaqira oladi (soniyada).
+    admin_ping_cooldown_sec: int = 30
+
+    # /tag bilan bir vaqtda nechta a'zoni chaqirish (bitta xabarda) va
+    # xabarlar orasidagi kutish vaqti (Telegram flood-limitiga tushmaslik
+    # uchun).
+    tag_batch_size: int = 5
+    tag_batch_delay_sec: float = 1.5
+
+    # ------------------------------------------------------------------
+    # CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+    # ------------------------------------------------------------------
+    # ".skin <nom>" yoki ".oruzhiya <nom>" yozilganda Steam Community
+    # Market'dan (steamcommunity.com/market/priceoverview) shu buyum
+    # narxini olib, dollar va so'mda ko'rsatadi.
+    cs2_market_enabled: bool = field(
+        default_factory=lambda: os.getenv("CS2_MARKET_ENABLED", "true").strip().lower()
+        not in ("0", "false", "off", "no")
+    )
+    # CS2 (Counter-Strike 2) ning Steam'dagi ilova ID'si - o'zgarmaydi.
+    cs2_app_id: int = 730
+    # 1 AQSH dollari nechchi O'zbek so'miga teng ekanligi. Bu qiymatni
+    # kerak bo'lganda `.env`/Railway Variables orqali (USD_TO_UZS_RATE)
+    # yangilab turishingiz mumkin - haqiqiy vaqtdagi kursni tekshirish
+    # uchun tashqi valyuta-API ishlatilmagan (qo'shimcha tashqi
+    # bog'liqlik/nosozlik nuqtasi bo'lmasin degan maqsadda).
+    usd_to_uzs_rate: float = field(
+        default_factory=lambda: float(os.getenv("USD_TO_UZS_RATE", "12500"))
+    )
+    # Steam Market so'roviga javob kutish vaqti (soniya).
+    cs2_market_timeout_sec: float = 8.0
+    # Bir foydalanuvchi qanchа tez-tez narx so'rashi mumkin (spam/Steam'ni
+    # haddan tashqari ko'p so'rov bilan bloklatib qo'ymaslik uchun).
+    cs2_market_cooldown_sec: int = 5
+
 
 settings = Settings()
 

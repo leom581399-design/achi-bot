@@ -64,6 +64,40 @@ avtomatik vazifalar) asosida yozilgan.
 - Federatsiyaga a'zo guruhga banlangan odam qo'shilishga urinsa, avtomatik
   chiqarib yuboriladi
 
+### 👥 Adminlik va a'zolarni chaqirish
+
+- **@admin** yoki **@admins** — guruhdagi barcha adminlarni "ping" qilib
+  chaqiradi (spam bo'lmasligi uchun bitta odam 30 soniyada faqat bir marta
+  chaqira oladi)
+- `/adminber` — kimnidir (reply qilib yoki @username bilan) ACHI BOT
+  orqali admin qiladi. **Faqat guruh EGASI (creator)** ishlata oladi —
+  oddiy adminga berilmagan, aks holda "buzilgan" bitta admin cheksiz
+  yangi admin yaratib, guruhni egallab olishi mumkin edi
+- `/adminol` — ACHI BOT orqali berilgan adminlikni olib tashlaydi (faqat
+  guruh egasi; Telegram orqali to'g'ridan-to'g'ri tayinlangan adminlarga
+  tegmaydi - ularni faqat Telegram guruh sozlamalaridan olib tashlash
+  mumkin)
+- `/tag [matn]` — bot ko'rgan barcha a'zolarni (5 talik guruhlarga bo'lib,
+  flood-limitiga tushmaslik uchun) chaqiradi. Admin buyrug'i.
+- `/staff` — guruh adminlari ro'yxati (egasi va adminlar alohida)
+- `/achi` — bot haqida qisqacha ma'lumot
+
+### 🔫 CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+
+- `.skin AK-47 | Redline (Field-Tested)` yoki
+  `.oruzhiya AWP | Asiimov (Battle-Scarred)` — Steam Community Market'dan
+  shu buyumning eng arzon narxini olib, **dollar va so'mda** ko'rsatadi
+- Buyum nomi Steam Market'dagi nomga to'g'ri kelishi kerak (katta-kichik
+  harf farqi muhim emas, lekin so'zlar to'g'ri yozilishi kerak)
+- `USD_TO_UZS_RATE` (`.env`) orqali dollar-so'm kursini sozlash mumkin -
+  bu **statik** qiymat (real vaqtdagi valyuta API ishlatilmagan, chunki
+  bu qo'shimcha tashqi bog'liqlik va nosozlik nuqtasi bo'lardi), shu
+  sabab vaqti-vaqti bilan qo'lda yangilab turishingiz tavsiya etiladi
+- `CS2_MARKET_ENABLED=false` qilib bu funksiyani butunlay o'chirish mumkin
+- Steam'ning bu endpointi rasmiy hujjatlashtirilmagan, shu sabab juda
+  tez-tez so'rov yuborilsa vaqtincha bloklanishi mumkin - shu uchun har
+  foydalanuvchi uchun 5 soniyalik kutish oralig'i bor
+
 ## 🛠 O'rnatish
 
 1. Talab qilinadigan paketlarni o'rnating (tavsiya: virtual environment):
@@ -197,7 +231,9 @@ achi_bot/
 │   ├── content.py        # filter/notes/rules (limit bilan)
 │   ├── report.py         # /r, /report, /exportcsv, har soatlik hisobot
 │   ├── premium.py        # /premium, Telegram Stars to'lov oqimi
-│   └── federation.py     # /fnew, /fjoin, /fban va h.k.
+│   ├── federation.py     # /fnew, /fjoin, /fban va h.k.
+│   ├── admin_tools.py    # @admin ping, /adminber, /adminol, /tag, /staff, /achi
+│   └── cs2_market.py     # .skin/.oruzhiya - Steam Market narx qidiruvi
 ├── requirements.txt
 ├── railway.json           # Railway deploy sozlamasi
 ├── Procfile                # muqobil ishga tushirish buyrug'i
@@ -215,6 +251,10 @@ achi_bot/
   (standart: 5 tadan)
 - `premium_30d_price_stars` / `premium_lifetime_price_stars` — Telegram
   Stars'dagi narx (standart: 150 va 500 ⭐)
+- `usd_to_uzs_rate` — CS2 narxlarini so'mga aylantirish uchun kurs
+  (`.env`dagi `USD_TO_UZS_RATE` orqali ham sozlanadi)
+- `admin_ping_cooldown_sec` — @admin necha soniyada bir marta chaqirilishi
+  mumkin (standart: 30)
 
 ## ❗ Eslatmalar
 

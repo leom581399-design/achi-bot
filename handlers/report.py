@@ -36,6 +36,8 @@ _ACTION_ICON = {
     "kick": "👋",
     "warn": "⚠️",
     "unwarn": "↩️",
+    "promote": "⭐",
+    "demote": "🔻",
 }
 
 _ACTION_TITLE = {
@@ -48,6 +50,8 @@ _ACTION_TITLE = {
     "kick": "Kick",
     "warn": "Ogohlantirish",
     "unwarn": "Ogohlantirish olindi",
+    "promote": "Admin qilindi",
+    "demote": "Adminlikdan olindi",
 }
 
 

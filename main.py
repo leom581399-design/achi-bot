@@ -21,7 +21,16 @@ from aiogram.types import Message
 
 from config import settings
 from database import db
-from handlers import content, federation, greetings, moderation, premium, report
+from handlers import (
+    admin_tools,
+    content,
+    cs2_market,
+    federation,
+    greetings,
+    moderation,
+    premium,
+    report,
+)
 from middlewares import EnsureChatMiddleware, FloodMiddleware
 
 logging.basicConfig(
@@ -110,12 +119,16 @@ async def main() -> None:
     # Tartib muhim: avval moderatsiya (buyruqlar + qulflar), keyin
     # greetings/content. enforce_locks endi faqat haqiqiy qulflangan
     # tarkib uchun ishga tushadi, shu sabab boshqa routerlarni to'smaydi.
-    # premium/federation buyruq-asosli bo'lgani uchun tartib muhim emas,
-    # lekin content.router'dan oldin turishi kerak emas - filter/notes
-    # catch-all handleri content.router ichida, u eng oxirida.
+    # premium/federation buyruq-asosli bo'lgani uchun tartib muhim emas.
+    # admin_tools va cs2_market content.router'dan OLDIN turishi shart -
+    # chunki ular @admin/@admins va ".skin"/".oruzhiya" bilan boshlangan
+    # matnlarni ushlab qolishi kerak, aks holda content.router'dagi
+    # filter/eslatma catch-all handleri ularni "yutib qo'yishi" mumkin edi.
     dp.include_router(moderation.router)
     dp.include_router(premium.router)
     dp.include_router(federation.router)
+    dp.include_router(admin_tools.router)
+    dp.include_router(cs2_market.router)
     dp.include_router(greetings.router)
     dp.include_router(content.router)
     dp.include_router(report.router)

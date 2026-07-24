@@ -38,6 +38,8 @@ _ACTION_LABELS = {
     "kick": ("KICK", (41, 128, 185)),
     "warn": ("OGOHLANTIRISH", (243, 156, 18)),
     "unwarn": ("OGOHLANTIRISH OLINDI", (127, 140, 141)),
+    "promote": ("ADMIN QILINDI", (41, 128, 185)),
+    "demote": ("ADMINLIKDAN OLINDI", (127, 140, 141)),
 }
 
 _AVATAR_SIZE_MM = 16

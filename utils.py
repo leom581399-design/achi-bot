@@ -60,6 +60,26 @@ async def is_target_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     return isinstance(member, (ChatMemberAdministrator, ChatMemberOwner))
 
 
+async def is_chat_owner(bot: Bot, chat_id: int, user_id: int) -> bool:
+    """
+    Faqat guruhning HAQIQIY egasi (Telegram'dagi "creator" statusi) yoki
+    bot super-adminlari uchun True qaytaradi. Oddiy admin (owner emas)
+    uchun False.
+
+    Bu qasddan qattiqroq tekshiruv: /adminber va /adminol kabi "yangi
+    admin yaratish/olib tashlash" imkoniyati faqat guruh egasiga tegishli
+    bo'lishi kerak - aks holda "buzilgan" oddiy admin cheksiz yangi admin
+    yaratib, guruhni butunlay egallab olishi mumkin edi.
+    """
+    if is_super_admin(user_id):
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+    except Exception:
+        return False
+    return isinstance(member, ChatMemberOwner)
+
+
 async def resolve_target_user(message: Message, bot: Bot) -> User | None:
     """
     Nishonni aniqlaydi: avval reply qilingan xabar egasi, keyin

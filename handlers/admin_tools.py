@@ -11,7 +11,9 @@ ACHI BOT - qo'shimcha admin vositalari:
 from __future__ import annotations
 
 import asyncio
+import re
 import time
+from datetime import datetime
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
@@ -19,7 +21,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner, Message, User
 
 import texts
-from config import settings
+from config import is_super_admin, settings
 from database import db
 from utils import is_chat_admin, is_chat_owner, mention_html, resolve_target_user
 
@@ -35,9 +37,23 @@ router = Router(name="admin_tools")
 _last_ping: dict[tuple[int, int], float] = {}
 
 
+_ADMIN_PING_RE = re.compile(r"(?i)(^|\s)@admins?\b")
+
+
+def _is_admin_ping_text(message: Message) -> bool:
+    """
+    Oddiy Python funksiyasi orqali tekshiruv - MagicFilter'ning
+    `F.text.regexp(...)` chaqiruvidan farqli o'laroq, `message.text is None`
+    bo'lgan xabarlarda (rasm, stiker, video va h.k.) TypeError tashlamaydi.
+    (F.text.regexp(...) None ustida regexp.search() chaqirib, xato berardi -
+    bu real xato edi, shu sabab bu funksiyaga o'zgartirildi.)
+    """
+    return bool(message.text) and bool(_ADMIN_PING_RE.search(message.text))
+
+
 @router.message(
     F.chat.type.in_({"group", "supergroup"}),
-    F.text.regexp(r"(?i)(^|\s)@admins?\b"),
+    _is_admin_ping_text,
 )
 async def on_admin_ping(message: Message, bot: Bot) -> None:
     if not message.from_user:
@@ -320,10 +336,114 @@ async def cmd_staff(message: Message, bot: Bot) -> None:
 
 
 # ------------------------------------------------------------------
-# /achi - bot haqida
+# /achi - bot haqida (super-admin uchun - qaysi guruhlarda ishlaydi)
 # ------------------------------------------------------------------
 
 
 @router.message(Command("achi"))
 async def cmd_achi(message: Message) -> None:
-    await message.reply(texts.ACHI_ABOUT)
+    if not message.from_user or not is_super_admin(message.from_user.id):
+        await message.reply(texts.ACHI_ABOUT)
+        return
+
+    # Bot egasi uchun - qo'shimcha qilib qaysi guruhlarda ishlab
+    # turganini ham ko'rsatamiz.
+    chats = await db.list_all_chats()
+    if not chats:
+        await message.answer(f"{texts.ACHI_ABOUT}\n\n{texts.ACHI_NO_GROUPS}")
+        return
+
+    lines = [texts.ACHI_ABOUT, "", texts.ACHI_GROUPS_HEADER.format(count=len(chats))]
+    now = time.time()
+    for row in chats:
+        title = row["chat_title"] or f"ID: {row['chat_id']}"
+        if row["premium_lifetime"]:
+            premium_mark = " ⭐(umrbod)"
+        elif row["premium_until"] and row["premium_until"] > now:
+            premium_mark = " ⭐"
+        else:
+            premium_mark = ""
+        lines.append(texts.ACHI_GROUPS_ITEM.format(title=title, premium=premium_mark))
+
+    text = "\n".join(lines)
+    # Telegram xabar uzunligi cheklangan (4096 belgi) - juda ko'p guruh
+    # bo'lsa bo'lib yuboramiz.
+    if len(text) <= 4000:
+        await message.answer(text)
+        return
+
+    await message.answer(lines[0] + "\n\n" + lines[2])
+    chunk: list[str] = []
+    chunk_len = 0
+    for line in lines[3:]:
+        chunk.append(line)
+        chunk_len += len(line) + 1
+        if chunk_len > 3500:
+            await message.answer("\n".join(chunk))
+            chunk = []
+            chunk_len = 0
+    if chunk:
+        await message.answer("\n".join(chunk))
+
+
+
+# ------------------------------------------------------------------
+# /info - foydalanuvchi profili (reply qilib yoki @username bilan)
+# ------------------------------------------------------------------
+
+
+@router.message(Command("info"))
+async def cmd_info(message: Message, command: CommandObject, bot: Bot) -> None:
+    if message.chat.type not in ("group", "supergroup"):
+        await message.reply(texts.ONLY_IN_GROUP)
+        return
+
+    target = await _resolve_target(message, bot, command.args)
+    if not target:
+        # Hech kim ko'rsatilmagan bo'lsa, o'zining profilini ko'rsatamiz.
+        target = message.from_user
+
+    if not target:
+        await message.reply(texts.INFO_USAGE)
+        return
+
+    mention = mention_html(target.id, target.full_name)
+
+    try:
+        member = await bot.get_chat_member(message.chat.id, target.id)
+        status = member.status
+    except TelegramAPIError:
+        status = "noma'lum"
+
+    status_label = {
+        "creator": "Guruh egasi 👑",
+        "administrator": "Admin 🛡",
+        "member": "Oddiy a'zo",
+        "restricted": "Cheklangan (mute) 🔇",
+        "left": "Guruhda yo'q",
+        "kicked": "Banlangan 🚫",
+    }.get(status, "Noma'lum")
+
+    warn_count = await db.count_warns(message.chat.id, target.id)
+
+    known_row = await db.get_known_member(message.chat.id, target.id)
+    if known_row and known_row["first_seen"]:
+        first_seen_str = datetime.fromtimestamp(known_row["first_seen"]).strftime(
+            "%d.%m.%Y %H:%M"
+        )
+    else:
+        first_seen_str = texts.INFO_UNKNOWN_DATE
+
+    username_str = f"@{target.username}" if target.username else texts.INFO_NO_USERNAME
+
+    text = texts.INFO_RESULT.format(
+        mention=mention,
+        full_name=target.full_name,
+        username=username_str,
+        user_id=target.id,
+        status=status_label,
+        first_seen=first_seen_str,
+        warn_count=warn_count,
+        max_warns=settings.max_warns,
+    )
+    await message.reply(text)

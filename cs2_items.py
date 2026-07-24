@@ -1,0 +1,117 @@
+"""
+ACHI BOT - CS2 buyum nomlari bazasi va "aqlli" (fuzzy) qidiruv.
+
+Foydalanuvchi ".skin ak47" kabi qisqa/to'liqsiz nom yozganda ham, bot
+Steam Market'dagi TO'LIQ va TO'G'RI nomni (market_hash_name) topib
+bera olishi uchun, loyihaga CS2'ning barcha buyumlari ro'yxati
+`data_cs2_items.json.gz` fayli sifatida qo'shilgan (ByMykel/CSGO-API
+ochiq loyihasidan olingan, MIT litsenziya, ~20 ming nom, siqilgan holda
+~85KB).
+
+Qidiruv strategiyasi (tezlik uchun ketma-ket, birinchi mos kelgani
+qaytariladi):
+1. To'liq mos kelish (katta-kichik harfsiz)
+2. Normallashtirilgan matn ichida qidiruv (bo'sh joy/belgilar olib
+   tashlangan holda)
+3. "Compact" qidiruv (bo'sh joysiz, "ak47redline" kabi)
+4. difflib orqali yaqin mos kelishlarni topish (agar yuqoridagilar
+   natija bermasa)
+"""
+from __future__ import annotations
+
+import difflib
+import gzip
+import json
+import os
+import re
+from functools import lru_cache
+
+_DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_cs2_items.json.gz")
+
+_STRIP_RE = re.compile(r"[^a-z0-9]+")
+_SPECIAL_CHARS_RE = re.compile(r"[★™]")
+
+
+def _normalize(text: str) -> str:
+    text = text.lower()
+    text = _SPECIAL_CHARS_RE.sub("", text)
+    text = _STRIP_RE.sub(" ", text)
+    return text.strip()
+
+
+def _compact(text: str) -> str:
+    return _normalize(text).replace(" ", "")
+
+
+@lru_cache(maxsize=1)
+def _load_index() -> tuple[list[str], dict[str, str], dict[str, str]]:
+    """
+    Bazani bir marta yuklab, xotirada saqlaydi (lru_cache orqali - jarayon
+    davomida faqat bitta marta o'qiladi).
+
+    :return: (original nomlar ro'yxati, normalized->original lug'at,
+              compact->original lug'at)
+    """
+    if not os.path.exists(_DATA_PATH):
+        return [], {}, {}
+
+    with gzip.open(_DATA_PATH, "rt", encoding="utf-8") as f:
+        names: list[str] = json.load(f)
+
+    norm_map: dict[str, str] = {}
+    compact_map: dict[str, str] = {}
+    for name in names:
+        norm_map[_normalize(name)] = name
+        compact_map[_compact(name)] = name
+
+    return names, norm_map, compact_map
+
+
+def search(query: str, limit: int = 5) -> list[str]:
+    """
+    Berilgan so'rov bo'yicha eng mos keladigan buyum nomlarini (Steam
+    market_hash_name shaklida) qaytaradi. Natija bo'lmasa bo'sh ro'yxat.
+    """
+    names, norm_map, compact_map = _load_index()
+    if not names:
+        return []
+
+    nq = _normalize(query)
+    cq = _compact(query)
+    if not nq:
+        return []
+
+    # 1) To'liq mos kelish
+    if nq in norm_map:
+        return [norm_map[nq]]
+
+    # 2) Normallashtirilgan matn ichida qidiruv (masalan "ak47 redline")
+    substr_matches = [norm_map[k] for k in norm_map if nq in k]
+    if substr_matches:
+        return _dedupe(substr_matches)[:limit]
+
+    # 3) Compact qidiruv (masalan "ak47redline" - bo'sh joysiz)
+    compact_matches = [compact_map[k] for k in compact_map if cq in k]
+    if compact_matches:
+        return _dedupe(compact_matches)[:limit]
+
+    # 4) Yaqin mos kelishlarni difflib bilan qidirish (xato yozilgan
+    # so'zlar uchun, masalan "redlien" -> "redline")
+    close = difflib.get_close_matches(nq, list(norm_map.keys()), n=limit, cutoff=0.5)
+    return [norm_map[c] for c in close]
+
+
+def _dedupe(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
+def is_available() -> bool:
+    """Ma'lumotlar bazasi fayli mavjud va yuklanganligini tekshiradi."""
+    names, _, _ = _load_index()
+    return bool(names)

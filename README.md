@@ -80,23 +80,48 @@ avtomatik vazifalar) asosida yozilgan.
 - `/tag [matn]` — bot ko'rgan barcha a'zolarni (5 talik guruhlarga bo'lib,
   flood-limitiga tushmaslik uchun) chaqiradi. Admin buyrug'i.
 - `/staff` — guruh adminlari ro'yxati (egasi va adminlar alohida)
-- `/achi` — bot haqida qisqacha ma'lumot
+- `/achi` — bot haqida qisqacha ma'lumot. **Bot egasi (`SUPER_ADMINS`)
+  uchun** — bot qaysi guruhlarda ishlab turganining to'liq ro'yxatini
+  ham ko'rsatadi (premium guruhlar ⭐ belgisi bilan)
 
-### 🔫 CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+### 🔫 CS2 (Counter-Strike 2) narx qidiruvi — LIS-SKINS.COM
 
-- `.skin AK-47 | Redline (Field-Tested)` yoki
-  `.oruzhiya AWP | Asiimov (Battle-Scarred)` — Steam Community Market'dan
-  shu buyumning eng arzon narxini olib, **dollar va so'mda** ko'rsatadi
-- Buyum nomi Steam Market'dagi nomga to'g'ri kelishi kerak (katta-kichik
-  harf farqi muhim emas, lekin so'zlar to'g'ri yozilishi kerak)
+- `.skin ak47 redline` yoki `.oruzhiya awp asiimov` — **to'liq nom yozish
+  shart emas**, bot o'zi eng mos keladigan buyumni topib beradi (fuzzy
+  qidiruv, ~20 ming CS2 buyumi bazasi asosida, `data_cs2_items.json.gz`)
+- Bir nechta mos nom topilsa, tanlash uchun tugmalar chiqadi
+- Narx birinchi navbatda **LIS-SKINS.COM**'dan olinadi (asosiy manba,
+  foydalanuvchi so'roviga ko'ra), topilmasa avtomatik **Steam Community
+  Market**'ga (zaxira manba) o'tadi — natija qaysi manbadan olinganini
+  xabarda ko'rsatadi
+- ⚠️ **Muhim eslatma:** LIS-SKINS.COM'ning ochiq (avtorizatsiyasiz) narx
+  eksport manzili rasmiy hujjatlashtirilmagan — `config.lis_skins_export_url`
+  (standart: `https://lis-skins.com/market_export_json/api_csgo_full.json`)
+  shu turdagi bozorlarda keng tarqalgan konventsiyaga asoslangan taxmin.
+  Agar bu ishlamasa, bot avtomatik Steam'ga o'tadi, shu sabab narx baribir
+  chiqadi. Agar sizda LIS-SKINS'ning rasmiy (avtorizatsiyali) API kaliti
+  bo'lsa, `.env`dagi `LIS_SKINS_API_KEY` orqali qo'shib qo'yishingiz mumkin.
 - `USD_TO_UZS_RATE` (`.env`) orqali dollar-so'm kursini sozlash mumkin -
   bu **statik** qiymat (real vaqtdagi valyuta API ishlatilmagan, chunki
   bu qo'shimcha tashqi bog'liqlik va nosozlik nuqtasi bo'lardi), shu
   sabab vaqti-vaqti bilan qo'lda yangilab turishingiz tavsiya etiladi
 - `CS2_MARKET_ENABLED=false` qilib bu funksiyani butunlay o'chirish mumkin
-- Steam'ning bu endpointi rasmiy hujjatlashtirilmagan, shu sabab juda
-  tez-tez so'rov yuborilsa vaqtincha bloklanishi mumkin - shu uchun har
-  foydalanuvchi uchun 5 soniyalik kutish oralig'i bor
+- Har foydalanuvchi uchun 5 soniyalik so'rov cheklovi bor (narx manbalarini
+  haddan tashqari ko'p so'rov bilan bloklatib qo'ymaslik uchun)
+
+### 👤 /info — foydalanuvchi profili
+
+- Xabarga reply qilib `/info` yozing (yoki hech kimga reply qilmasdan
+  yozsangiz, o'zingizning profilingiz chiqadi)
+- Ism, username, Telegram ID, guruhdagi holati (admin/oddiy a'zo/mute/ban),
+  botning bu odamni birinchi ko'rgan sanasi, ogohlantirishlar sonini
+  ko'rsatadi
+
+### 🛡️ Anti-flood
+
+- Bir foydalanuvchi qisqa vaqt ichida (standart: 8 soniyada 6 tadan ortiq)
+  xabar yozsa, avtomatik 10 daqiqaga mute qilinadi — sozlamalar
+  `config.flood_message_limit` / `config.flood_time_window_sec`
 
 ## 🛠 O'rnatish
 
@@ -224,6 +249,8 @@ achi_bot/
 ├── states.py              # FSM holatlari (sabab so'rash uchun)
 ├── middlewares.py         # guruhni avtomatik ro'yxatga olish + anti-flood
 ├── pdf_report.py          # PDF hisobot generatori (fpdf2)
+├── cs2_items.py            # CS2 buyum nomlari bazasi + fuzzy qidiruv
+├── data_cs2_items.json.gz  # ~20 ming CS2 buyum nomi (siqilgan, ~85KB)
 ├── fonts/                 # PDF uchun Unicode shrift (kirill/lotin)
 ├── handlers/
 │   ├── moderation.py     # ban/mute/warn/kick/lock
@@ -232,8 +259,8 @@ achi_bot/
 │   ├── report.py         # /r, /report, /exportcsv, har soatlik hisobot
 │   ├── premium.py        # /premium, Telegram Stars to'lov oqimi
 │   ├── federation.py     # /fnew, /fjoin, /fban va h.k.
-│   ├── admin_tools.py    # @admin ping, /adminber, /adminol, /tag, /staff, /achi
-│   └── cs2_market.py     # .skin/.oruzhiya - Steam Market narx qidiruvi
+│   ├── admin_tools.py    # @admin ping, /adminber, /adminol, /tag, /staff, /achi, /info
+│   └── cs2_market.py     # .skin/.oruzhiya - LIS-SKINS/Steam narx qidiruvi
 ├── requirements.txt
 ├── railway.json           # Railway deploy sozlamasi
 ├── Procfile                # muqobil ishga tushirish buyrug'i

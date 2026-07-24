@@ -63,6 +63,7 @@ HELP = (
     "/adminol - adminlikdan olish (faqat guruh egasi)\n"
     "/tag [matn] - ko'rilgan barcha a'zolarni chaqirish\n"
     "/staff - guruh adminlari ro'yxati\n"
+    "/info - foydalanuvchi profili (reply qilib)\n"
     "/achi - bot haqida ma'lumot\n\n"
     "<b>🔫 CS2 narxlari (agar yoqilgan bo'lsa):</b>\n"
     ".skin AK-47 | Redline - Steam Market'dagi narxini so'mda ko'rsatadi\n\n"
@@ -419,30 +420,48 @@ TAG_ONLY_ADMIN = "Bu buyruqni faqat adminlar ishlata oladi-a, hammaboyni chaqiri
 
 
 # ------------------------------------------------------------------
-# CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+# CS2 (Counter-Strike 2) narx qidiruvi - LIS-SKINS.COM (asosiy manba)
 # ------------------------------------------------------------------
 
 CS2_MARKET_USAGE = (
-    "Shunday yozing: .skin AK-47 | Redline (Field-Tested)\n"
-    "yoki: .oruzhiya AWP | Asiimov (Battle-Scarred)\n"
-    "Nom Steam Market'dagi nom bilan bir xil bo'lishi kerak-a."
+    "Shunday yozing: .skin ak47 redline yoki .oruzhiya awp asiimov\n"
+    "To'liq yozish shart emas, men o'zim qaysi buyumni "
+    "nazarda tutganingizni topib olishga harakat qilaman-a."
 )
 CS2_MARKET_SEARCHING = "🔍 \"{name}\" qidirilyapti, biroz kuting..."
 CS2_MARKET_NOT_FOUND = (
-    "Bunaqa buyum topilmadi-a. Nomni Steam Market'dagidek to'liq yozib ko'ring "
-    "(masalan: AK-47 | Redline (Field-Tested))."
+    "Bunaqa buyum topolmadim-a. Boshqacha yozib ko'ring, masalan faqat "
+    "qurol nomi va skin nomini yozing: .skin ak47 redline"
 )
 CS2_MARKET_RESULT = (
     "🔫 <b>{name}</b>\n\n"
     "💵 Narxi: <b>${usd}</b>\n"
     "💰 So'mda: <b>{uzs} so'm</b>\n"
+    "🌐 Manba: {source}\n"
 )
-CS2_MARKET_RESULT_WITH_VOLUME = CS2_MARKET_RESULT + "📦 So'nggi 24 soatda sotilgan: {volume} ta\n"
+CS2_MARKET_RESULT_WITH_VOLUME = (
+    "🔫 <b>{name}</b>\n\n"
+    "💵 Narxi: <b>${usd}</b>\n"
+    "💰 So'mda: <b>{uzs} so'm</b>\n"
+    "📦 So'nggi 24 soatda sotilgan: {volume} ta\n"
+    "🌐 Manba: {source}\n"
+)
+CS2_MARKET_SOURCE_LISSKINS = "LIS-SKINS.COM"
+CS2_MARKET_SOURCE_STEAM = "Steam Community Market (zaxira manba)"
 CS2_MARKET_ERROR = (
-    "Steam Market hozir javob bermayapti, birozdan keyin qayta urinib ko'ring-a."
+    "Narx manbalari hozir javob bermayapti, birozdan keyin qayta urinib ko'ring-a."
 )
 CS2_MARKET_COOLDOWN = "Sabr qiling-a, {seconds} soniyada bir marta so'rov yuborish mumkin."
 CS2_MARKET_DISABLED = "CS2 narx qidiruvi bu guruhda o'chirilgan."
+
+# Bir nechta mos natija topilganda - tanlash tugmalari
+CS2_MULTI_RESULTS_HEADER = (
+    "🔍 \"{query}\" bo'yicha bir nechta mos buyum topdim, qaysi birini "
+    "so'ramoqchisiz?"
+)
+CS2_MULTI_RESULTS_EXPIRED = (
+    "Bu tanlov eskirgan ekan, qaytadan .skin yoki .oruzhiya bilan yozing-a."
+)
 
 # ------------------------------------------------------------------
 # /staff - adminlar ro'yxati
@@ -466,3 +485,36 @@ ACHI_ABOUT = (
     "🔫 CS2 skinlarining Steam Market narxini so'mda ko'rsataman\n\n"
     "Buyruqlar ro'yxati uchun /help yozing."
 )
+
+
+
+# ------------------------------------------------------------------
+# /info - foydalanuvchi profili
+# ------------------------------------------------------------------
+
+INFO_USAGE = (
+    "Kimning profilini ko'rsatishni bilmadim-a. Xabariga reply qiling, "
+    "@username yozing yoki hech narsasiz /info deb o'zingizni ko'rasiz."
+)
+INFO_NO_USERNAME = "yo'q"
+INFO_UNKNOWN_DATE = "noma'lum (men uni ko'rmaganman hali)"
+INFO_RESULT = (
+    "👤 <b>Foydalanuvchi profili</b>\n\n"
+    "Ism: {mention}\n"
+    "To'liq ism: {full_name}\n"
+    "Username: {username}\n"
+    "ID: <code>{user_id}</code>\n"
+    "Holati: {status}\n"
+    "Birinchi ko'rilgan: {first_seen}\n"
+    "Ogohlantirishlar: {warn_count}/{max_warns}"
+)
+
+
+
+# ------------------------------------------------------------------
+# /achi - bot egasi uchun guruhlar ro'yxati
+# ------------------------------------------------------------------
+
+ACHI_NO_GROUPS = "Hozircha hech qanaqa guruhda ishlamayapman, qiziq ekan."
+ACHI_GROUPS_HEADER = "📋 <b>Ishlab turgan guruhlar ({count} ta):</b>"
+ACHI_GROUPS_ITEM = "• {title}{premium}"

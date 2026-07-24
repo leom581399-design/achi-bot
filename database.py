@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS known_members (
     full_name TEXT,
     username TEXT,
     last_seen REAL NOT NULL,
+    first_seen REAL,
     PRIMARY KEY (chat_id, user_id)
 );
 
@@ -168,6 +169,24 @@ class Database:
         self._conn.row_factory = aiosqlite.Row
         await self._conn.executescript(_SCHEMA)
         await self._conn.commit()
+        await self._run_migrations()
+
+    async def _run_migrations(self) -> None:
+        """
+        `CREATE TABLE IF NOT EXISTS` allaqachon mavjud jadvalga yangi
+        ustun qo'shmaydi, shu sabab avval yaratilgan bazalarda (bot
+        yangilanishidan oldin) `known_members.first_seen` ustuni
+        bo'lmasligi mumkin. Shu yerda xavfsiz tekshirib, kerak bo'lsa
+        qo'shamiz (yangi bazalarda bu ustun schema orqali allaqachon bor,
+        shu sabab `duplicate column` xatosini e'tiborsiz qoldiramiz).
+        """
+        try:
+            await self.conn.execute(
+                "ALTER TABLE known_members ADD COLUMN first_seen REAL"
+            )
+            await self.conn.commit()
+        except Exception:
+            pass
 
     async def close(self) -> None:
         if self._conn:
@@ -245,6 +264,19 @@ class Database:
     async def get_all_active_report_chats(self) -> list[aiosqlite.Row]:
         cursor = await self.conn.execute(
             "SELECT chat_id, chat_title FROM chat_settings WHERE report_enabled = 1"
+        )
+        return await cursor.fetchall()
+
+    async def list_all_chats(self) -> list[aiosqlite.Row]:
+        """
+        Bot hozirgacha ko'rgan (kamida bir marta guruh xabari qabul
+        qilingan) barcha guruhlarni qaytaradi - `/achi` buyrug'ida bot
+        egasi (super-admin) uchun "qaysi guruhlarda ishlab turaman"
+        ro'yxatini chiqarish uchun ishlatiladi.
+        """
+        cursor = await self.conn.execute(
+            "SELECT chat_id, chat_title, premium_until, premium_lifetime "
+            "FROM chat_settings ORDER BY chat_id"
         )
         return await cursor.fetchall()
 
@@ -679,18 +711,28 @@ class Database:
     async def upsert_known_member(
         self, chat_id: int, user_id: int, full_name: str | None, username: str | None
     ) -> None:
+        now = time.time()
         await self.conn.execute(
             """
-            INSERT INTO known_members (chat_id, user_id, full_name, username, last_seen)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO known_members (chat_id, user_id, full_name, username, last_seen, first_seen)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(chat_id, user_id) DO UPDATE SET
                 full_name = excluded.full_name,
                 username = excluded.username,
                 last_seen = excluded.last_seen
             """,
-            (chat_id, user_id, full_name, username, time.time()),
+            (chat_id, user_id, full_name, username, now, now),
         )
         await self.conn.commit()
+
+    async def get_known_member(
+        self, chat_id: int, user_id: int
+    ) -> aiosqlite.Row | None:
+        cursor = await self.conn.execute(
+            "SELECT * FROM known_members WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        return await cursor.fetchone()
 
     async def remove_known_member(self, chat_id: int, user_id: int) -> None:
         await self.conn.execute(

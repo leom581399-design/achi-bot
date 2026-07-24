@@ -93,17 +93,36 @@ class Settings:
     tag_batch_delay_sec: float = 1.5
 
     # ------------------------------------------------------------------
-    # CS2 (Counter-Strike 2) Steam Market narx qidiruvi
+    # CS2 (Counter-Strike 2) narx qidiruvi - LIS-SKINS.COM
     # ------------------------------------------------------------------
-    # ".skin <nom>" yoki ".oruzhiya <nom>" yozilganda Steam Community
-    # Market'dan (steamcommunity.com/market/priceoverview) shu buyum
-    # narxini olib, dollar va so'mda ko'rsatadi.
+    # ".skin <nom>" yoki ".oruzhiya <nom>" yozilganda LIS-SKINS.COM
+    # bozoridan (birinchi navbatda) shu buyum narxini olib, dollar va
+    # so'mda ko'rsatadi. Agar LIS-SKINS javob bermasa/topilmasa, Steam
+    # Community Market'ga (zaxira manba) avtomatik o'tadi.
     cs2_market_enabled: bool = field(
         default_factory=lambda: os.getenv("CS2_MARKET_ENABLED", "true").strip().lower()
         not in ("0", "false", "off", "no")
     )
     # CS2 (Counter-Strike 2) ning Steam'dagi ilova ID'si - o'zgarmaydi.
     cs2_app_id: int = 730
+    # LIS-SKINS'ning ochiq (avtorizatsiyasiz) narx eksport manzili.
+    # Eslatma: bu rasmiy hujjatlashtirilgan API emas, shu turdagi
+    # bozorlarda (market.csgo.com, csgo.tm va h.k.) keng tarqalgan
+    # konventsiyaga asoslangan. Agar LIS-SKINS bu manzilni o'zgartirsa,
+    # `.env`dagi LIS_SKINS_EXPORT_URL orqali yangilashingiz mumkin.
+    lis_skins_export_url: str = field(
+        default_factory=lambda: os.getenv(
+            "LIS_SKINS_EXPORT_URL",
+            "https://lis-skins.com/market_export_json/api_csgo_full.json",
+        )
+    )
+    # LIS-SKINS'ning rasmiy (avtorizatsiya talab qiluvchi) API'sidan
+    # foydalanish uchun - agar sizda hisob va API kalit bo'lsa, shu yerga
+    # qo'ying (.env: LIS_SKINS_API_KEY). Bo'lmasa, faqat ochiq eksport
+    # va Steam fallback ishlatiladi.
+    lis_skins_api_key: str | None = field(
+        default_factory=lambda: os.getenv("LIS_SKINS_API_KEY", "").strip() or None
+    )
     # 1 AQSH dollari nechchi O'zbek so'miga teng ekanligi. Bu qiymatni
     # kerak bo'lganda `.env`/Railway Variables orqali (USD_TO_UZS_RATE)
     # yangilab turishingiz mumkin - haqiqiy vaqtdagi kursni tekshirish
@@ -112,11 +131,14 @@ class Settings:
     usd_to_uzs_rate: float = field(
         default_factory=lambda: float(os.getenv("USD_TO_UZS_RATE", "12500"))
     )
-    # Steam Market so'roviga javob kutish vaqti (soniya).
+    # Narx manbasiga so'roviga javob kutish vaqti (soniya).
     cs2_market_timeout_sec: float = 8.0
-    # Bir foydalanuvchi qanchа tez-tez narx so'rashi mumkin (spam/Steam'ni
+    # Bir foydalanuvchi qanchа tez-tez narx so'rashi mumkin (spam/manbani
     # haddan tashqari ko'p so'rov bilan bloklatib qo'ymaslik uchun).
     cs2_market_cooldown_sec: int = 5
+    # LIS-SKINS export faylini xotirada qanchа vaqt saqlash (soniya) -
+    # har safar 20K+ buyumlik faylni qayta yuklab olmaslik uchun.
+    lis_skins_cache_ttl_sec: int = 10 * 60
 
 
 settings = Settings()

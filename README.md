@@ -126,6 +126,58 @@ va PDF fayllar qayta deploy qilinganda yo'qolishi mumkin. Uzoq muddatli
 saqlash uchun Railway'da **Volume** qo'shib, `DB_PATH`/`REPORTS_DIR`ni shu
 volume ichiga ko'rsating.
 
+## 🚀 Fly.io'ga deploy qilish
+
+**Muhim eslatma:** Bot HTTP server emas, Telegram bilan "long polling"
+orqali gaplashadi. Fly.io standart holatda web-servis kutib, HTTP
+health-check qiladi — agar bu sozlanmagan bo'lsa, deploy **"failed"**
+bo'lib qoladi. Shu sabab loyihada tayyor `fly.toml` bor, unda ataylab
+`[http_service]` bo'limi YO'Q (worker rejimi ishlatilgan).
+
+1. `flyctl` CLI'ni o'rnating: `curl -L https://fly.io/install.sh | sh`
+   (batafsil: [fly.io/docs/flyctl/install](https://fly.io/docs/flyctl/install/))
+2. Kirish: `fly auth login`
+3. Repo papkasiga o'ting va ilovani ro'yxatdan o'tkazing (bu bosqichda
+   `fly.toml` allaqachon bor bo'lgani uchun `fly launch` so'ramaydi,
+   to'g'ridan-to'g'ri shu nom bilan yaratadi; agar nom band bo'lsa,
+   `fly.toml`dagi `app = "achi-bot"` qatorini o'zgartiring):
+
+   ```bash
+   fly apps create achi-bot
+   ```
+
+4. Ma'lumotlarni saqlash uchun doimiy disk (volume) yarating (SQLite baza
+   va PDF/CSV fayllar shu yerda saqlanadi, aks holda har deploy'da
+   o'chib ketadi):
+
+   ```bash
+   fly volumes create achi_data --size 1 --region ams
+   ```
+
+5. Kerakli maxfiy o'zgaruvchilarni sozlang (token kodda standart sifatida
+   bor, lekin shu orqali almashtirish/qo'shish mumkin):
+
+   ```bash
+   fly secrets set SUPER_ADMINS=123456789
+   ```
+
+6. Deploy qiling:
+
+   ```bash
+   fly deploy
+   ```
+
+7. Loglarni kuzatish: `fly logs` — `"ACHI BOT ishga tushdi"` yozuvini
+   ko'rsangiz, bot ishlab turibdi.
+
+**Fly.io haqida bilish kerak bo'lgan narsa:** 2024-yil oktyabrdan boshlab
+Fly.io "har doim bepul" tarifni olib tashlagan, endi **"Pay As You Go"**
+(ishlatgan resursga qarab to'lash) tizimi ishlaydi va bank kartasi talab
+qiladi. Bizning bot kabi kichik va yengil ilova odatda oylik bepul
+limitga (~$5 grant) sig'ib ketadi, lekin "birinchi oy butunlay tekin"
+degan kafolat endi yo'q — foydalanishga qarab kichik summa yechilishi
+mumkin.
+
 ## 📁 Loyiha strukturasi
 
 ```
@@ -149,6 +201,8 @@ achi_bot/
 ├── requirements.txt
 ├── railway.json           # Railway deploy sozlamasi
 ├── Procfile                # muqobil ishga tushirish buyrug'i
+├── Dockerfile              # Fly.io/Docker-asosidagi hostinglar uchun
+├── fly.toml                # Fly.io deploy sozlamasi (worker rejimi)
 └── .env.example
 ```
 

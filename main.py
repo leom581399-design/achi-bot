@@ -1,0 +1,137 @@
+"""
+ACHI BOT - kirish nuqtasi.
+
+Ishga tushirish: `python main.py` (avval .env faylini to'ldirib oling,
+qarang: .env.example).
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+import texts
+from aiogram.filters import Command
+from aiogram.types import Message
+
+from config import settings
+from database import db
+from handlers import content, federation, greetings, moderation, premium, report
+from middlewares import EnsureChatMiddleware, FloodMiddleware
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("achi_bot")
+
+
+async def cmd_start(message: Message) -> None:
+    await message.answer(texts.START)
+
+
+async def cmd_help(message: Message) -> None:
+    await message.answer(texts.HELP)
+
+
+def register_basic_handlers(dp: Dispatcher) -> None:
+    dp.message.register(cmd_start, Command("start"))
+    dp.message.register(cmd_help, Command("help"))
+
+
+async def on_startup(bot: Bot) -> None:
+    await db.connect()
+    logger.info("ACHI BOT ishga tushdi, DB ulandi: %s", settings.db_path)
+
+
+async def on_shutdown(bot: Bot) -> None:
+    await db.close()
+    logger.info("ACHI BOT to'xtatildi, DB yopildi.")
+
+
+def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
+    scheduler = AsyncIOScheduler()
+
+    async def _hourly_job() -> None:
+        try:
+            from handlers.report import run_hourly_reports
+
+            await run_hourly_reports(bot)
+        except Exception:
+            logger.exception("Har soatlik hisobotni yuborishda xatolik")
+
+    async def _captcha_sweep_job() -> None:
+        try:
+            from handlers.greetings import sweep_expired_captchas
+
+            await sweep_expired_captchas(bot)
+        except Exception:
+            logger.exception("Captcha tozalashda xatolik")
+
+    scheduler.add_job(
+        _hourly_job,
+        trigger="interval",
+        hours=settings.hourly_report_interval_hours,
+        id="hourly_report",
+        # APScheduler avtomatik ravishda birinchi ishga tushishni
+        # "hozir + interval" qilib belgilaydi, ya'ni har soat oxirida ishlaydi.
+    )
+    scheduler.add_job(
+        _captcha_sweep_job,
+        trigger="interval",
+        seconds=20,
+        id="captcha_sweep",
+    )
+    return scheduler
+
+
+async def main() -> None:
+    if not settings.bot_token:
+        raise RuntimeError(
+            "BOT_TOKEN topilmadi. .env faylini yarating (.env.example'dan nusxa oling) "
+            "va BotFather'dan olingan tokenni qo'ying."
+        )
+
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    dp = Dispatcher(storage=MemoryStorage())
+    dp.update.outer_middleware(EnsureChatMiddleware())
+    dp.message.middleware(FloodMiddleware())
+
+    register_basic_handlers(dp)
+
+    # Tartib muhim: avval moderatsiya (buyruqlar + qulflar), keyin
+    # greetings/content. enforce_locks endi faqat haqiqiy qulflangan
+    # tarkib uchun ishga tushadi, shu sabab boshqa routerlarni to'smaydi.
+    # premium/federation buyruq-asosli bo'lgani uchun tartib muhim emas,
+    # lekin content.router'dan oldin turishi kerak emas - filter/notes
+    # catch-all handleri content.router ichida, u eng oxirida.
+    dp.include_router(moderation.router)
+    dp.include_router(premium.router)
+    dp.include_router(federation.router)
+    dp.include_router(greetings.router)
+    dp.include_router(content.router)
+    dp.include_router(report.router)
+
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+
+    scheduler = setup_scheduler(bot)
+    scheduler.start()
+
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

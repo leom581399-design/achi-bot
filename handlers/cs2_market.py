@@ -8,19 +8,21 @@ Guruh a'zosi ".skin <nom>" yoki ".oruzhiya <nom>" deb yozganda:
    ("AK-47 | Redline (Field-Tested)") aylantiramiz - fuzzy qidiruv.
 2. Agar bir nechta mos nom topilsa, foydalanuvchiga tanlash uchun
    tugmalar chiqaramiz.
-3. Narxni birinchi navbatda LIS-SKINS.COM'dan olishga harakat qilamiz
-   (asosiy manba, foydalanuvchi so'roviga ko'ra). Agar u javob
-   bermasa/topilmasa, Steam Community Market'ga (zaxira manba) o'tamiz.
+3. Narxni **Skinport.com**'dan olamiz - bu CS2 skinlar uchun ochiq
+   (avtorizatsiyasiz) va RASMIY hujjatlashtirilgan REST API
+   (https://docs.skinport.com/items). Agar u javob bermasa/topilmasa,
+   Steam Community Market'ga (zaxira manba) o'tamiz.
 4. Natijani dollar va so'mda, qaysi manbadan olinganini ko'rsatib beramiz.
 
-MUHIM ESLATMA: LIS-SKINS.COM'ning ochiq (avtorizatsiyasiz) narx eksport
-manzili rasmiy hujjatlashtirilmagan - bu manzil (`config.lis_skins_export_url`)
-shu turdagi bozorlarda (market.csgo.com va h.k.) keng tarqalgan
-konventsiyaga asoslangan taxmin. Agar u ishlamasa, bot avtomatik Steam'ga
-o'tadi, shu sabab foydalanuvchi baribir narxni oladi.
+Eslatma: avvalgi versiyada LIS-SKINS.COM ishlatilgan edi, lekin uning
+ochiq narx endpointi rasmiy tasdiqlanmagan (faqat avtorizatsiya talab
+qiladigan API topildi). Skinport'ning ochiq API'si esa rasmiy
+hujjatlashtirilgan va sinovdan o'tgan (barnumbirr/skinport ochiq kodli
+Python wrapper orqali tasdiqlangan), shu sabab asosiy manba shu bo'ldi.
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
 import urllib.parse
@@ -34,17 +36,27 @@ import texts
 from config import settings
 
 router = Router(name="cs2_market")
+logger = logging.getLogger("achi_bot.cs2_market")
 
 _STEAM_PRICEOVERVIEW_URL = "https://steamcommunity.com/market/priceoverview/"
+# Steam ba'zan User-Agent'siz so'rovlarni rad etadi/bloklaydi (ayniqsa
+# server/datacenter IP manzillaridan kelganda) - shu sabab oddiy brauzer
+# so'rovi kabi ko'rinish uchun sarlavha qo'shamiz.
+_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+}
 
 # Har foydalanuvchi uchun oxirgi so'rov vaqti (spam va manbani haddan
 # tashqari ko'p so'rov bilan bloklatib qo'ymaslik uchun).
 _last_lookup: dict[tuple[int, int], float] = {}
 
-# LIS-SKINS export faylini xotirada keshlash - har safar 20K+ buyumlik
-# faylni qayta yuklab olmaslik uchun.
-_lis_skins_cache: dict[str, float] = {"loaded_at": 0.0}
-_lis_skins_prices: dict[str, dict] = {}
+# Skinport narxlarini xotirada keshlash - har safar minglab buyumlik
+# javobni qayta yuklab olmaslik va rate-limitga tushmaslik uchun.
+_skinport_cache: dict[str, float] = {"loaded_at": 0.0}
+_skinport_prices: dict[str, dict] = {}
 
 # Bir nechta mos natija chiqganda, foydalanuvchi tugma bosganda qaysi
 # nomni tanlaganini bilish uchun (callback_data qisqa bo'lishi kerak,
@@ -85,83 +97,98 @@ def _extract_item_query(text: str) -> str | None:
 
 
 # ------------------------------------------------------------------
-# LIS-SKINS.COM (asosiy manba)
+# SKINPORT.COM (asosiy manba) - rasmiy, ochiq, avtorizatsiyasiz API
+# https://docs.skinport.com/items
 # ------------------------------------------------------------------
 
+_SKINPORT_ITEMS_URL = "https://api.skinport.com/v1/items"
 
-async def _load_lis_skins_prices() -> dict[str, dict]:
+
+async def _load_skinport_prices() -> dict[str, dict]:
     """
-    LIS-SKINS export faylini yuklab, {market_hash_name: {...}} lug'atiga
-    aylantiradi. Xotirada `lis_skins_cache_ttl_sec` davomida saqlanadi.
-    Xatolik bo'lsa (manzil ishlamasa, format o'zgargan bo'lsa) bo'sh
-    lug'at qaytaradi - bu holatda chaqiruvchi Steam'ga o'tadi.
+    Skinport'ning /v1/items endpointidan BARCHA CS2 buyumlarining
+    narxini bir martada yuklab, {market_hash_name: {...}} lug'atiga
+    aylantiradi. Xotirada `lis_skins_cache_ttl_sec` davomida saqlanadi
+    (bir necha ming buyumni har so'rovda qayta yuklab olmaslik uchun).
+
+    Skinport'ning rate-limiti 5 daqiqada 8 so'rov (endpoint guruhi
+    bo'yicha) - shu sabab keshlash MUHIM, aks holda tez orada
+    429 (Too Many Requests) xatosiga uchraymiz.
     """
     now = time.time()
     if (
-        _lis_skins_prices
-        and now - _lis_skins_cache["loaded_at"] < settings.lis_skins_cache_ttl_sec
+        _skinport_prices
+        and now - _skinport_cache["loaded_at"] < settings.lis_skins_cache_ttl_sec
     ):
-        return _lis_skins_prices
+        return _skinport_prices
 
     timeout = aiohttp.ClientTimeout(total=settings.cs2_market_timeout_sec)
-    headers = {}
-    if settings.lis_skins_api_key:
-        headers["Authorization"] = f"Bearer {settings.lis_skins_api_key}"
+    params = {
+        "app_id": str(settings.cs2_app_id),
+        "currency": "USD",
+        "tradable": "false",  # tradable=false -> narxi bor barcha buyumlar
+    }
 
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(
-                settings.lis_skins_export_url, headers=headers
+                _SKINPORT_ITEMS_URL, params=params, headers=_REQUEST_HEADERS
             ) as resp:
                 if resp.status != 200:
+                    logger.warning(
+                        "Skinport /v1/items status=%s qaytardi (rate-limit "
+                        "bo'lsa 429 bo'ladi)",
+                        resp.status,
+                    )
                     return {}
                 data = await resp.json(content_type=None)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Skinport /v1/items so'rovida xatolik: %r", exc)
         return {}
 
-    parsed = _parse_lis_skins_payload(data)
+    parsed = _parse_skinport_payload(data)
     if parsed:
-        _lis_skins_prices.clear()
-        _lis_skins_prices.update(parsed)
-        _lis_skins_cache["loaded_at"] = now
-    return _lis_skins_prices
+        _skinport_prices.clear()
+        _skinport_prices.update(parsed)
+        _skinport_cache["loaded_at"] = now
+        logger.info("Skinport narxlari yuklandi: %d buyum", len(parsed))
+    else:
+        logger.warning(
+            "Skinport javob berdi, lekin 0 buyum ajratildi (format o'zgargan "
+            "bo'lishi mumkin) - javob turi: %s",
+            type(data).__name__,
+        )
+    return _skinport_prices
 
 
-def _parse_lis_skins_payload(data) -> dict[str, dict]:
+def _parse_skinport_payload(data) -> dict[str, dict]:
     """
-    LIS-SKINS'ning export formatini {market_hash_name: {price, count}}
-    ko'rinishiga o'tkazadi. Bir nechta ehtimoliy formatni qo'llab-quvvatlaydi
-    (ro'yxat yoki lug'at, chunki eksport manzilining aniq strukturasi
-    tasdiqlanmagan).
+    Skinport /v1/items javobi - to'g'ridan-to'g'ri item dict'lari ro'yxati:
+    [{"market_hash_name": "...", "min_price": 1.23, "suggested_price": 1.30,
+      "quantity": 16, ...}, ...]
+    (docs.skinport.com/items rasmiy misoliga asoslangan).
     """
     result: dict[str, dict] = {}
-    if isinstance(data, dict) and "items" in data:
-        data = data["items"]
+    if not isinstance(data, list):
+        return result
 
-    if isinstance(data, list):
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            name = item.get("market_hash_name") or item.get("name")
-            price = item.get("price") or item.get("min_price") or item.get("price_min")
-            if name and price is not None:
-                result[name] = {"price": price, "count": item.get("count") or item.get("quantity")}
-    elif isinstance(data, dict):
-        for name, value in data.items():
-            if isinstance(value, dict):
-                price = value.get("price") or value.get("min_price")
-                count = value.get("count") or value.get("quantity")
-            else:
-                price = value
-                count = None
-            if price is not None:
-                result[name] = {"price": price, "count": count}
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("market_hash_name")
+        # min_price bo'lmasa (masalan hozir sotuvda yo'q), suggested_price
+        # (tavsiya etilgan narx) ni zaxira sifatida ishlatamiz.
+        price = item.get("min_price")
+        if price is None:
+            price = item.get("suggested_price")
+        if name and price is not None:
+            result[name] = {"price": price, "count": item.get("quantity")}
 
     return result
 
 
-async def _fetch_from_lis_skins(item_name: str) -> tuple[float, int | None] | None:
-    prices = await _load_lis_skins_prices()
+async def _fetch_from_skinport(item_name: str) -> tuple[float, int | None] | None:
+    prices = await _load_skinport_prices()
     if not prices:
         return None
 
@@ -199,14 +226,21 @@ async def _fetch_from_steam(item_name: str) -> tuple[float, int | None] | None:
     timeout = aiohttp.ClientTimeout(total=settings.cs2_market_timeout_sec)
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url) as resp:
+            async with session.get(url, headers=_REQUEST_HEADERS) as resp:
                 if resp.status != 200:
+                    logger.warning(
+                        "Steam priceoverview \"%s\" uchun status=%s qaytardi",
+                        item_name,
+                        resp.status,
+                    )
                     return None
                 data = await resp.json(content_type=None)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Steam priceoverview so'rovida xatolik (%s): %r", item_name, exc)
         return None
 
     if not data or not data.get("success"):
+        logger.info("Steam \"%s\" uchun narx topmadi (success=false yoki bo'sh javob)", item_name)
         return None
 
     price = _parse_usd(data.get("lowest_price") or data.get("median_price"))
@@ -243,10 +277,10 @@ def _parse_usd(price_str: str | None) -> float | None:
 async def _fetch_price_with_fallback(
     item_name: str,
 ) -> tuple[float, int | None, str] | None:
-    """Avval LIS-SKINS, topilmasa Steam'dan narxni oladi."""
-    lis_result = await _fetch_from_lis_skins(item_name)
-    if lis_result is not None:
-        price, count = lis_result
+    """Avval Skinport, topilmasa Steam'dan narxni oladi."""
+    skinport_result = await _fetch_from_skinport(item_name)
+    if skinport_result is not None:
+        price, count = skinport_result
         return price, count, texts.CS2_MARKET_SOURCE_LISSKINS
 
     steam_result = await _fetch_from_steam(item_name)
@@ -260,6 +294,13 @@ async def _fetch_price_with_fallback(
 async def _send_price_result(message: Message, item_name: str) -> None:
     result = await _fetch_price_with_fallback(item_name)
     if result is None:
+        logger.warning(
+            "\"%s\" uchun narx TOPILMADI - LIS-SKINS ham, Steam ham javob "
+            "bermadi. Sabablarini yuqoridagi WARNING loglarida ko'ring "
+            "(masalan Steam 429/403 bergan bo'lishi mumkin - bulut IP "
+            "manzillari ko'pincha Steam tomonidan bloklanadi).",
+            item_name,
+        )
         await message.answer(texts.CS2_MARKET_NOT_FOUND)
         return
 

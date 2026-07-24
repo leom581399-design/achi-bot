@@ -420,7 +420,7 @@ TAG_ONLY_ADMIN = "Bu buyruqni faqat adminlar ishlata oladi-a, hammaboyni chaqiri
 
 
 # ------------------------------------------------------------------
-# CS2 (Counter-Strike 2) narx qidiruvi - LIS-SKINS.COM (asosiy manba)
+# CS2 (Counter-Strike 2) narx qidiruvi - SKINPORT.COM (asosiy manba)
 # ------------------------------------------------------------------
 
 CS2_MARKET_USAGE = (
@@ -446,7 +446,7 @@ CS2_MARKET_RESULT_WITH_VOLUME = (
     "📦 So'nggi 24 soatda sotilgan: {volume} ta\n"
     "🌐 Manba: {source}\n"
 )
-CS2_MARKET_SOURCE_LISSKINS = "LIS-SKINS.COM"
+CS2_MARKET_SOURCE_LISSKINS = "SKINPORT.COM"
 CS2_MARKET_SOURCE_STEAM = "Steam Community Market (zaxira manba)"
 CS2_MARKET_ERROR = (
     "Narx manbalari hozir javob bermayapti, birozdan keyin qayta urinib ko'ring-a."

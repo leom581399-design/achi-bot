@@ -84,23 +84,25 @@ avtomatik vazifalar) asosida yozilgan.
   uchun** — bot qaysi guruhlarda ishlab turganining to'liq ro'yxatini
   ham ko'rsatadi (premium guruhlar ⭐ belgisi bilan)
 
-### 🔫 CS2 (Counter-Strike 2) narx qidiruvi — LIS-SKINS.COM
+### 🔫 CS2 (Counter-Strike 2) narx qidiruvi — SKINPORT.COM
 
 - `.skin ak47 redline` yoki `.oruzhiya awp asiimov` — **to'liq nom yozish
   shart emas**, bot o'zi eng mos keladigan buyumni topib beradi (fuzzy
   qidiruv, ~20 ming CS2 buyumi bazasi asosida, `data_cs2_items.json.gz`)
 - Bir nechta mos nom topilsa, tanlash uchun tugmalar chiqadi
-- Narx birinchi navbatda **LIS-SKINS.COM**'dan olinadi (asosiy manba,
-  foydalanuvchi so'roviga ko'ra), topilmasa avtomatik **Steam Community
-  Market**'ga (zaxira manba) o'tadi — natija qaysi manbadan olinganini
-  xabarda ko'rsatadi
-- ⚠️ **Muhim eslatma:** LIS-SKINS.COM'ning ochiq (avtorizatsiyasiz) narx
-  eksport manzili rasmiy hujjatlashtirilmagan — `config.lis_skins_export_url`
-  (standart: `https://lis-skins.com/market_export_json/api_csgo_full.json`)
-  shu turdagi bozorlarda keng tarqalgan konventsiyaga asoslangan taxmin.
-  Agar bu ishlamasa, bot avtomatik Steam'ga o'tadi, shu sabab narx baribir
-  chiqadi. Agar sizda LIS-SKINS'ning rasmiy (avtorizatsiyali) API kaliti
-  bo'lsa, `.env`dagi `LIS_SKINS_API_KEY` orqali qo'shib qo'yishingiz mumkin.
+- Narx birinchi navbatda **Skinport.com**'dan olinadi (asosiy manba —
+  bu CS2 skinlar uchun **rasmiy hujjatlashtirilgan va avtorizatsiyasiz**
+  ochiq API, https://docs.skinport.com/items), topilmasa avtomatik
+  **Steam Community Market**'ga (zaxira manba) o'tadi — natija qaysi
+  manbadan olinganini xabarda ko'rsatadi
+- ⚠️ Bilib qo'yish kerak: har ikkala manba ham **rate-limit**ga ega
+  (Skinport: 5 daqiqada 8 so'rov endpoint guruhi bo'yicha; Steam esa
+  ayniqsa bulut/server IP manzillarini tez-tez vaqtincha bloklab
+  turadi). Shu sabab Skinport'dan olingan narxlar ro'yxati xotirada
+  10 daqiqa saqlanadi (`config.lis_skins_cache_ttl_sec`), shu bilan
+  qayta-qayta so'rov yuborilib rate-limitga tushib qolmaydi. Agar
+  narx "topilmadi" bo'lib chiqsa, Railway loglarida sababini (masalan
+  Skinport/Steam qanday status kod qaytargani) ko'rishingiz mumkin.
 - `USD_TO_UZS_RATE` (`.env`) orqali dollar-so'm kursini sozlash mumkin -
   bu **statik** qiymat (real vaqtdagi valyuta API ishlatilmagan, chunki
   bu qo'shimcha tashqi bog'liqlik va nosozlik nuqtasi bo'lardi), shu
@@ -260,7 +262,7 @@ achi_bot/
 │   ├── premium.py        # /premium, Telegram Stars to'lov oqimi
 │   ├── federation.py     # /fnew, /fjoin, /fban va h.k.
 │   ├── admin_tools.py    # @admin ping, /adminber, /adminol, /tag, /staff, /achi, /info
-│   └── cs2_market.py     # .skin/.oruzhiya - LIS-SKINS/Steam narx qidiruvi
+│   └── cs2_market.py     # .skin/.oruzhiya - Skinport/Steam narx qidiruvi
 ├── requirements.txt
 ├── railway.json           # Railway deploy sozlamasi
 ├── Procfile                # muqobil ishga tushirish buyrug'i

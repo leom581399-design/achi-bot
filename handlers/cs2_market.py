@@ -370,8 +370,21 @@ async def on_cs2_pick(callback: CallbackQuery) -> None:
         await callback.answer()
         return
 
+    # MUHIM: choice_key'ning o'zi ichida ":" belgilari bor
+    # (chat_id:user_id:timestamp), shu sabab callback_data'ni
+    # split(":", maxsplit=2) bilan ajratish XATO edi - bu choice_key'ni
+    # noto'liq kesib, index_str'ga "789:1784931297:2" kabi qiymat
+    # qoldirardi, va int(index_str) har doim ValueError berardi (shu
+    # sabab tugma bosilganda hech narsa bo'lmasdi). To'g'ri yechim:
+    # indeksni OXIRIDAN ajratib olish (u har doim oddiy son bo'ladi),
+    # qolgan hammasi choice_key.
+    parts = callback.data.split(":")
+    if len(parts) < 3:
+        await callback.answer()
+        return
+    index_str = parts[-1]
+    choice_key = ":".join(parts[1:-1])
     try:
-        _, choice_key, index_str = callback.data.split(":", maxsplit=2)
         index = int(index_str)
     except ValueError:
         await callback.answer()
@@ -383,7 +396,11 @@ async def on_cs2_pick(callback: CallbackQuery) -> None:
         return
 
     item_name = matches[index]
-    _pending_choices.pop(choice_key, None)
+    # Eslatma: ro'yxatni bu yerda pop qilmaymiz - chunki guruh xabari
+    # bo'lgani uchun, boshqa odam ham (yoki shu odam) boshqa tugmani
+    # (masalan "Field-Tested" o'rniga "Battle-Scarred") bosishni
+    # xohlashi mumkin. Yozuv faqat vaqt bo'yicha (_cleanup_pending_choices
+    # orqali, 5 daqiqadan keyin) tozalanadi.
 
     await callback.answer()
     try:

@@ -49,10 +49,12 @@ HELP = (
     "/notes - eslatmalar ro'yxati\n"
     "/setrules [matn] - guruh qoidalarini yozish\n"
     "/rules - qoidalarni ko'rish\n\n"
-    "<b>🚫 Personal (so'z bo'yicha avtomatik o'chirish):</b>\n"
-    "/personal so'z - shu so'zni ishlatgan xabarlarni avtomatik o'chirish\n"
-    "/stoppersonal so'z - ro'yxatdan olib tashlash\n"
-    "/personallist - ro'yxatni ko'rish\n\n"
+    "<b>🎯 Personal (o'zingizning maxsus buyrug'ingiz):</b>\n"
+    "/personal nom matn - shu nomda buyruq yaratish (masalan: "
+    "/personal salom Xush kelibsiz, aka!), keyin guruhda kimdur /salom "
+    "deb yozsa, o'sha matnni chiqarib beraman\n"
+    "/stoppersonal nom - buyruqni o'chirish\n"
+    "/personallist - yaratilgan buyruqlar ro'yxati\n\n"
     "<b>📊 Hisobot:</b>\n"
     "/r - shu kunlik/soatlik hisobotni chatga chiqarish\n"
     "/report - hozirgina PDF hisobot tayyorlab beradi\n\n"
@@ -179,23 +181,33 @@ LOCKED_CONTENT_REMOVED = (
 )
 
 # ------------------------------------------------------------------
-# Personal - so'z bo'yicha avtomatik o'chirish
+# Personal - o'zingiz yaratadigan maxsus buyruq
 # ------------------------------------------------------------------
 
 PERSONAL_USAGE = (
-    "Shunday yozing: /personal so'z - shu so'zni ishlatgan xabarlarni "
-    "endi avtomatik o'chiraman (masalan: /personal huylo).\n"
-    "O'chirish uchun: /stoppersonal so'z\n"
+    "Shunday yozing: /personal nom matn - masalan:\n"
+    "/personal salom Xush kelibsiz, aka! Qandaysiz?\n\n"
+    "Shundan keyin guruhda kimdur \"/salom\" deb yozsa, men \"Xush "
+    "kelibsiz, aka! Qandaysiz?\" deb javob beraman.\n\n"
+    "O'chirish uchun: /stoppersonal nom\n"
     "Ro'yxatni ko'rish uchun: /personallist"
 )
-PERSONAL_ADDED = (
-    "✅ Xo'p, endi \"{word}\" so'zi ishlatilgan xabarlarni (adminlardan "
-    "tashqari) avtomatik o'chiraman-a."
+PERSONAL_BAD_NAME = (
+    "Buyruq nomi faqat lotin harflari, raqam va \"_\" belgisidan iborat "
+    "bo'lishi kerak-a (bo'sh joysiz, bittа so'z)."
 )
-PERSONAL_REMOVED = "\"{word}\" ro'yxatdan olib tashlandi, endi o'chirilmaydi."
-PERSONAL_NOT_FOUND = "Bunday so'z ro'yxatda yo'q ekan."
-PERSONAL_LIST_EMPTY = "Hozircha hech qanaqa \"personal\" so'z belgilanmagan."
-PERSONAL_LIST_HEADER = "🚫 Avtomatik o'chiriladigan so'zlar:"
+PERSONAL_NAME_RESERVED = (
+    "\"/{name}\" - botning o'zining ichki buyrug'i ekan, buni band qilib "
+    "bo'lmaydi-a. Boshqa nom tanlang."
+)
+PERSONAL_ADDED = (
+    "✅ Xo'p, endi \"/{name}\" deb yozilsa, men saqlangan matnni chiqarib "
+    "beraman-a."
+)
+PERSONAL_REMOVED = "\"/{name}\" buyrug'i o'chirildi."
+PERSONAL_NOT_FOUND = "Bunday buyruq ro'yxatda yo'q ekan."
+PERSONAL_LIST_EMPTY = "Hozircha hech qanaqa \"personal\" buyruq yaratilmagan."
+PERSONAL_LIST_HEADER = "🎯 Yaratilgan personal buyruqlar:"
 
 LOCK_NAMES = {
     "link": "havolalar",
@@ -624,12 +636,12 @@ ACHI_ABOUT = (
     "Buyruqlar ro'yxati uchun /help yozing."
 )
 
-# Guruhda /achi buyrug'i berilganda chiqadigan reklama kanallar ro'yxati.
-# MATN VA USERNAME'LAR ANIQ FOYDALANUVCHI BERGANIDEK, O'ZGARTIRMASDAN
-# yozilgan - iltimos, keyingi tahrirlarda ham shu ro'yxatni aynan
-# saqlagan holda o'zgartiring.
-ACHI_GROUP_LINKS = (
-    "\n\n📢 <b>ACHI oilasi kanallari:</b>\n"
+# Guruhda /achi buyrug'i berilganda chiqadigan yagona yozuv - FAQAT
+# shu ro'yxat chiqishi kerak, boshqa hech nima (bot haqida matn,
+# guruhlar ro'yxati va h.k.) QO'SHILMAYDI. MATN VA USERNAME'LAR ANIQ
+# FOYDALANUVCHI BERGANIDEK, O'ZGARTIRMASDAN yozilgan - iltimos, keyingi
+# tahrirlarda ham shu ro'yxatni aynan saqlagan holda o'zgartiring.
+ACHI_GROUP_LINKS_ONLY = (
     "CS2 Skin - @AChi_Drop\n"
     "CS Community- @AChi_Chat\n"
     "Lis Skins - @AChi_Lisskins\n"

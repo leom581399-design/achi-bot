@@ -132,6 +132,12 @@ async def main() -> None:
     dp.include_router(greetings.router)
     dp.include_router(content.router)
     dp.include_router(report.router)
+    # content.fallback_router ENG OXIRIDA turishi SHART: u "personal"
+    # (/xxx) custom buyruqlarni ushlaydi, lekin faqat yuqoridagi hech
+    # qanaqa haqiqiy buyruq/handler ushlab olmagan xabarlar uchun -
+    # aks holda haqiqiy buyruqlarni (/ban, /premium va h.k.) "yutib
+    # qo'yishi" mumkin edi.
+    dp.include_router(content.fallback_router)
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)

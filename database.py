@@ -65,16 +65,17 @@ CREATE TABLE IF NOT EXISTS locks (
     PRIMARY KEY (chat_id, lock_type)
 );
 
--- "Personal" so'zlar: admin /personal <so'z> deb belgilagan har qanday
--- so'z shu guruhda keyinchalik KIMDUR yozsa (admin bo'lmasa) avtomatik
--- o'chiriladi. Masalan haqoratli/taqiqlangan so'zlarni tezda bloklash
--- uchun ishlatiladi.
-CREATE TABLE IF NOT EXISTS personal_words (
+-- "Personal" - admin o'zi xohlagan nomda maxsus buyruq yaratadi:
+-- /personal <nom> <matn> deb saqlansa, keyinchalik shu guruhda kimdur
+-- "/<nom>" deb yozganda bot saqlangan matnni chiqarib beradi (masalan
+-- tez-tez so'raladigan javoblar, havolalar va h.k. uchun qulay).
+CREATE TABLE IF NOT EXISTS custom_commands (
     chat_id INTEGER NOT NULL,
-    word TEXT NOT NULL,
+    name TEXT NOT NULL,
+    content TEXT NOT NULL,
     added_by INTEGER NOT NULL,
     created_at REAL NOT NULL,
-    PRIMARY KEY (chat_id, word)
+    PRIMARY KEY (chat_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS chat_settings (
@@ -475,36 +476,47 @@ class Database:
         return [r["lock_type"] for r in rows]
 
     # ------------------------------------------------------------------
-    # Personal so'zlar (/personal - avtomatik o'chirish)
+    # Custom commands (/personal - o'zingizning buyrug'ingizni yaratish)
     # ------------------------------------------------------------------
 
-    async def add_personal_word(self, chat_id: int, word: str, added_by: int) -> None:
+    async def add_custom_command(
+        self, chat_id: int, name: str, content: str, added_by: int
+    ) -> None:
         await self.conn.execute(
             """
-            INSERT INTO personal_words (chat_id, word, added_by, created_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(chat_id, word) DO UPDATE SET
-                added_by = excluded.added_by, created_at = excluded.created_at
+            INSERT INTO custom_commands (chat_id, name, content, added_by, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(chat_id, name) DO UPDATE SET
+                content = excluded.content,
+                added_by = excluded.added_by,
+                created_at = excluded.created_at
             """,
-            (chat_id, word.lower(), added_by, time.time()),
+            (chat_id, name.lower(), content, added_by, time.time()),
         )
         await self.conn.commit()
 
-    async def remove_personal_word(self, chat_id: int, word: str) -> bool:
+    async def remove_custom_command(self, chat_id: int, name: str) -> bool:
         cursor = await self.conn.execute(
-            "DELETE FROM personal_words WHERE chat_id = ? AND word = ?",
-            (chat_id, word.lower()),
+            "DELETE FROM custom_commands WHERE chat_id = ? AND name = ?",
+            (chat_id, name.lower()),
         )
         await self.conn.commit()
         return cursor.rowcount > 0
 
-    async def list_personal_words(self, chat_id: int) -> list[str]:
+    async def get_custom_command(self, chat_id: int, name: str) -> str | None:
         cursor = await self.conn.execute(
-            "SELECT word FROM personal_words WHERE chat_id = ? ORDER BY word",
+            "SELECT content FROM custom_commands WHERE chat_id = ? AND name = ?",
+            (chat_id, name.lower()),
+        )
+        row = await cursor.fetchone()
+        return row["content"] if row else None
+
+    async def list_custom_commands(self, chat_id: int) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT name FROM custom_commands WHERE chat_id = ? ORDER BY name",
             (chat_id,),
         )
-        rows = await cursor.fetchall()
-        return [r["word"] for r in rows]
+        return await cursor.fetchall()
 
     # ------------------------------------------------------------------
     # Chat settings (welcome/goodbye/rules/clean-service/captcha)

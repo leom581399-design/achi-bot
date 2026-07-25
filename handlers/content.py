@@ -1,6 +1,6 @@
 """
 ACHI BOT - filter (avtomatik javob), notes (eslatmalar), rules (qoidalar)
-va "personal" (so'z bo'yicha avtomatik o'chirish).
+va "personal" (o'zingiz yaratadigan maxsus buyruq).
 """
 from __future__ import annotations
 
@@ -15,6 +15,29 @@ from handlers.premium import is_premium_or_free
 from utils import is_chat_admin
 
 router = Router(name="content")
+
+# Botning o'zi ishlatadigan barcha buyruq nomlari - "personal" orqali
+# yaratilgan custom buyruq shu nomlar bilan TO'QNASHMASLIGI kerak
+# (aks holda, masalan /personal ban deb yozilsa, /ban buyrug'i butunlay
+# ishlamay qoladi). Ro'yxat butun loyihadagi barcha @router.message(
+# Command("...")) chaqiruvlaridan yig'ilgan.
+RESERVED_COMMAND_NAMES = frozenset(
+    {
+        "start", "help",
+        "ban", "tban", "unban", "mute", "tmute", "unmute", "kick",
+        "warn", "unwarn", "warns",
+        "lock", "unlock", "locks",
+        "setwelcome", "setgoodbye", "cleanservice", "captcha", "autoapprove",
+        "filter", "stopfilter", "filters",
+        "personal", "stoppersonal", "personallist",
+        "save", "get", "notes", "delnote",
+        "setrules", "rules",
+        "r", "report", "exportcsv",
+        "premium", "grantpremium", "broadcast", "premiumber",
+        "fnew", "fjoin", "fleave", "finfo", "fban", "funban", "fed", "federation",
+        "adminber", "adminol", "tag", "staff", "achi", "info",
+    }
+)
 
 
 async def _guard_admin(message: Message, bot) -> bool:
@@ -104,37 +127,20 @@ async def cmd_filters(message: Message) -> None:
 async def apply_filters_and_notes(message: Message, bot) -> None:
     """
     Guruhdagi oddiy matnli xabarlarni tekshiradi:
-    1. Avval "personal" so'zlarga qarshi tekshiradi (agar admin bo'lmagan
-       kishi taqiqlangan so'zni yozsa - o'chiriladi, boshqa hech narsa
-       qilinmaydi).
-    2. Agar "#nom" bilan boshlansa - eslatmani qidiradi.
-    3. Aks holda - saqlangan filtrlar bilan solishtiradi.
+    1. Agar "#nom" bilan boshlansa - eslatmani qidiradi.
+    2. Aks holda - saqlangan filtrlar bilan solishtiradi.
 
-    (Bularning barchasi bitta handlerda, chunki aiogram'da bir update
-    uchun odatda faqat bitta handler ishlaydi - shu sabab ularni ajratib
-    qo'ysak, biri ikkinchisini "yutib qo'yardi".)
+    ("/nom" bilan boshlangan "personal" (custom) buyruqlar bu handlerga
+    umuman kelmaydi - ular pastdagi `handle_custom_command` orqali,
+    barcha real buyruqlar (Command filtrlari) tekshirilib bo'lgandan
+    KEYIN ishlaydi, chunki bu handler ~F.text.startswith("/") bilan
+    "/" belgisi bilan boshlangan xabarlarni ataylab chetlab o'tadi.)
     """
     if not message.text:
         return
 
     text = message.text.strip()
     lowered = text.lower()
-
-    # 1) "Personal" so'zlar - admin bo'lmagan kishi taqiqlangan so'zni
-    # ishlatsa xabarni o'chiramiz. Admin o'zi bu so'zlarni yoza olishi
-    # kerak (masalan tushuntirish/muhokama uchun), shu sabab avval
-    # tekshiramiz.
-    if message.from_user and not await is_chat_admin(
-        bot, message.chat.id, message.from_user.id
-    ):
-        personal_words = await db.list_personal_words(message.chat.id)
-        for word in personal_words:
-            if word in lowered:
-                try:
-                    await message.delete()
-                except Exception:
-                    pass
-                return
 
     if text.startswith("#") and len(text) > 1:
         name = text.lstrip("#").split()[0]
@@ -154,33 +160,52 @@ async def apply_filters_and_notes(message: Message, bot) -> None:
 
 
 # ------------------------------------------------------------------
-# Personal - so'z bo'yicha avtomatik o'chirish
+# Personal - o'zingiz yaratadigan maxsus buyruq
 # ------------------------------------------------------------------
+#
+# Masalan: admin "Lorem ipsum" degan xabarga reply qilib
+# "/personal salom Xush kelibsiz, aka!" deb yozsa (yoki shunchaki
+# "/personal salom Xush kelibsiz, aka!" deb to'g'ridan-to'g'ri yozsa),
+# guruhda keyinchalik kimdur "/salom" deb yozganda bot "Xush kelibsiz,
+# aka!" deb javob beradi.
 
 
 @router.message(Command("personal"))
 async def cmd_personal(message: Message, command: CommandObject, bot) -> None:
     if not await _guard_admin(message, bot):
         return
-    word = (command.args or "").strip().lower()
-    if not word:
+
+    raw = (command.args or "").strip()
+    parts = raw.split(maxsplit=1)
+    if len(parts) < 2:
         await message.reply(texts.PERSONAL_USAGE)
         return
-    await db.add_personal_word(message.chat.id, word, message.from_user.id)
-    await message.reply(texts.PERSONAL_ADDED.format(word=word))
+
+    name, content = parts[0].lstrip("/").lower(), parts[1]
+
+    if not name.isascii() or not name.replace("_", "").isalnum():
+        await message.reply(texts.PERSONAL_BAD_NAME)
+        return
+
+    if name in RESERVED_COMMAND_NAMES:
+        await message.reply(texts.PERSONAL_NAME_RESERVED.format(name=name))
+        return
+
+    await db.add_custom_command(message.chat.id, name, content, message.from_user.id)
+    await message.reply(texts.PERSONAL_ADDED.format(name=name))
 
 
 @router.message(Command("stoppersonal"))
 async def cmd_stoppersonal(message: Message, command: CommandObject, bot) -> None:
     if not await _guard_admin(message, bot):
         return
-    word = (command.args or "").strip().lower()
-    if not word:
+    name = (command.args or "").strip().lstrip("/").lower()
+    if not name:
         await message.reply(texts.PERSONAL_USAGE)
         return
-    removed = await db.remove_personal_word(message.chat.id, word)
+    removed = await db.remove_custom_command(message.chat.id, name)
     await message.reply(
-        texts.PERSONAL_REMOVED.format(word=word) if removed else texts.PERSONAL_NOT_FOUND
+        texts.PERSONAL_REMOVED.format(name=name) if removed else texts.PERSONAL_NOT_FOUND
     )
 
 
@@ -189,11 +214,11 @@ async def cmd_personallist(message: Message) -> None:
     if message.chat.type not in ("group", "supergroup"):
         await message.reply(texts.ONLY_IN_GROUP)
         return
-    words = await db.list_personal_words(message.chat.id)
-    if not words:
+    rows = await db.list_custom_commands(message.chat.id)
+    if not rows:
         await message.reply(texts.PERSONAL_LIST_EMPTY)
         return
-    lines = "\n".join(f"- {w}" for w in words)
+    lines = "\n".join(f"- /{r['name']}" for r in rows)
     await message.reply(f"{texts.PERSONAL_LIST_HEADER}\n{lines}")
 
 
@@ -299,3 +324,33 @@ async def cmd_rules(message: Message) -> None:
         await message.reply(texts.RULES_EMPTY)
         return
     await message.reply(f"{texts.RULES_HEADER}{rules_text}")
+
+
+# ------------------------------------------------------------------
+# "Personal" custom buyruqlarni ishlatish - FALLBACK ROUTER
+# ------------------------------------------------------------------
+#
+# MUHIM: bu ALOHIDA router (`content.router`ning o'zi emas)! Sababi:
+# main.py'da routerlar ro'yxatga olinish TARTIBIDA tekshiriladi, va
+# content.router report.router'dan OLDIN turadi. Agar shu handler
+# content.router ICHIDA bo'lganida, u "/r", "/report", "/exportcsv"
+# kabi HAQIQIY buyruqlarni ular tekshirilishidan oldin "yutib qo'yardi"
+# (chunki F.text.startswith("/") "/" bilan boshlangan HAR QANDAY
+# xabarga mos keladi). Shu sabab bu handler alohida `fallback_router`
+# ichida va main.py'da BARCHA boshqa routerlardan KEYIN (eng oxirida)
+# ro'yxatga olinishi SHART - shundagina haqiqiy buyruqlar birinchi
+# navbatda ishlab, faqat ULARGA mos kelmagan "/" bilan boshlangan
+# xabarlar shu yerga (custom buyruqni qidirishga) yetib keladi.
+fallback_router = Router(name="content_fallback")
+
+
+@fallback_router.message(F.chat.type.in_({"group", "supergroup"}), F.text.startswith("/"))
+async def handle_custom_command(message: Message) -> None:
+    if not message.text:
+        return
+    name = message.text.strip().split()[0].lstrip("/").split("@")[0].lower()
+    if not name:
+        return
+    content = await db.get_custom_command(message.chat.id, name)
+    if content:
+        await message.reply(content)

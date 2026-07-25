@@ -312,23 +312,29 @@ async def cmd_staff(message: Message, bot: Bot) -> None:
 @router.message(Command("achi"))
 async def cmd_achi(message: Message) -> None:
     is_group = message.chat.type in ("group", "supergroup")
-    # Guruhda /achi buyrug'i berilganda reklama kanallar ro'yxati ham
-    # qo'shiladi (foydalanuvchi so'roviga ko'ra, aynan shu ro'yxat) -
-    # shaxsiy chatda esa faqat oddiy "bot haqida" matni chiqadi.
-    about_text = texts.ACHI_ABOUT + (texts.ACHI_GROUP_LINKS if is_group else "")
 
+    # Guruhda /achi buyrug'i berilganda FAQAT reklama kanallar ro'yxati
+    # chiqishi kerak - boshqa hech narsa (bot haqida matn ham, super-admin
+    # uchun guruhlar ro'yxati ham) qo'shilmasin, aynan foydalanuvchi
+    # so'ragan ushbu yakka ro'yxat chiqishi shart.
+    if is_group:
+        await message.reply(texts.ACHI_GROUP_LINKS_ONLY)
+        return
+
+    # Shaxsiy chatda (DM) - odatdagidek bot haqida ma'lumot, super-admin
+    # uchun esa qo'shimcha guruhlar ro'yxati.
     if not message.from_user or not is_super_admin(message.from_user.id):
-        await message.reply(about_text)
+        await message.reply(texts.ACHI_ABOUT)
         return
 
     # Bot egasi uchun - qo'shimcha qilib qaysi guruhlarda ishlab
     # turganini ham ko'rsatamiz.
     chats = await db.list_all_chats()
     if not chats:
-        await message.answer(f"{about_text}\n\n{texts.ACHI_NO_GROUPS}")
+        await message.answer(f"{texts.ACHI_ABOUT}\n\n{texts.ACHI_NO_GROUPS}")
         return
 
-    lines = [about_text, "", texts.ACHI_GROUPS_HEADER.format(count=len(chats))]
+    lines = [texts.ACHI_ABOUT, "", texts.ACHI_GROUPS_HEADER.format(count=len(chats))]
     now = time.time()
     for row in chats:
         title = row["chat_title"] or f"ID: {row['chat_id']}"

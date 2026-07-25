@@ -65,6 +65,18 @@ CREATE TABLE IF NOT EXISTS locks (
     PRIMARY KEY (chat_id, lock_type)
 );
 
+-- "Personal" so'zlar: admin /personal <so'z> deb belgilagan har qanday
+-- so'z shu guruhda keyinchalik KIMDUR yozsa (admin bo'lmasa) avtomatik
+-- o'chiriladi. Masalan haqoratli/taqiqlangan so'zlarni tezda bloklash
+-- uchun ishlatiladi.
+CREATE TABLE IF NOT EXISTS personal_words (
+    chat_id INTEGER NOT NULL,
+    word TEXT NOT NULL,
+    added_by INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (chat_id, word)
+);
+
 CREATE TABLE IF NOT EXISTS chat_settings (
     chat_id INTEGER PRIMARY KEY,
     chat_title TEXT,
@@ -461,6 +473,38 @@ class Database:
         )
         rows = await cursor.fetchall()
         return [r["lock_type"] for r in rows]
+
+    # ------------------------------------------------------------------
+    # Personal so'zlar (/personal - avtomatik o'chirish)
+    # ------------------------------------------------------------------
+
+    async def add_personal_word(self, chat_id: int, word: str, added_by: int) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO personal_words (chat_id, word, added_by, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, word) DO UPDATE SET
+                added_by = excluded.added_by, created_at = excluded.created_at
+            """,
+            (chat_id, word.lower(), added_by, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_personal_word(self, chat_id: int, word: str) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM personal_words WHERE chat_id = ? AND word = ?",
+            (chat_id, word.lower()),
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def list_personal_words(self, chat_id: int) -> list[str]:
+        cursor = await self.conn.execute(
+            "SELECT word FROM personal_words WHERE chat_id = ? ORDER BY word",
+            (chat_id,),
+        )
+        rows = await cursor.fetchall()
+        return [r["word"] for r in rows]
 
     # ------------------------------------------------------------------
     # Chat settings (welcome/goodbye/rules/clean-service/captcha)

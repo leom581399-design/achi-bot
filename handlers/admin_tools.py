@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-from datetime import datetime
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
@@ -23,7 +22,7 @@ from aiogram.types import ChatMemberAdministrator, ChatMemberOwner, Message
 import texts
 from config import is_super_admin, settings
 from database import db
-from utils import is_chat_admin, is_chat_owner, mention_html, resolve_target
+from utils import format_timestamp, is_chat_admin, is_chat_owner, mention_html, resolve_target
 
 router = Router(name="admin_tools")
 
@@ -312,18 +311,24 @@ async def cmd_staff(message: Message, bot: Bot) -> None:
 
 @router.message(Command("achi"))
 async def cmd_achi(message: Message) -> None:
+    is_group = message.chat.type in ("group", "supergroup")
+    # Guruhda /achi buyrug'i berilganda reklama kanallar ro'yxati ham
+    # qo'shiladi (foydalanuvchi so'roviga ko'ra, aynan shu ro'yxat) -
+    # shaxsiy chatda esa faqat oddiy "bot haqida" matni chiqadi.
+    about_text = texts.ACHI_ABOUT + (texts.ACHI_GROUP_LINKS if is_group else "")
+
     if not message.from_user or not is_super_admin(message.from_user.id):
-        await message.reply(texts.ACHI_ABOUT)
+        await message.reply(about_text)
         return
 
     # Bot egasi uchun - qo'shimcha qilib qaysi guruhlarda ishlab
     # turganini ham ko'rsatamiz.
     chats = await db.list_all_chats()
     if not chats:
-        await message.answer(f"{texts.ACHI_ABOUT}\n\n{texts.ACHI_NO_GROUPS}")
+        await message.answer(f"{about_text}\n\n{texts.ACHI_NO_GROUPS}")
         return
 
-    lines = [texts.ACHI_ABOUT, "", texts.ACHI_GROUPS_HEADER.format(count=len(chats))]
+    lines = [about_text, "", texts.ACHI_GROUPS_HEADER.format(count=len(chats))]
     now = time.time()
     for row in chats:
         title = row["chat_title"] or f"ID: {row['chat_id']}"
@@ -398,9 +403,7 @@ async def cmd_info(message: Message, command: CommandObject, bot: Bot) -> None:
 
     known_row = await db.get_known_member(message.chat.id, target.id)
     if known_row and known_row["first_seen"]:
-        first_seen_str = datetime.fromtimestamp(known_row["first_seen"]).strftime(
-            "%d.%m.%Y %H:%M"
-        )
+        first_seen_str = format_timestamp(known_row["first_seen"])
     else:
         first_seen_str = texts.INFO_UNKNOWN_DATE
 
@@ -408,7 +411,6 @@ async def cmd_info(message: Message, command: CommandObject, bot: Bot) -> None:
 
     text = texts.INFO_RESULT.format(
         mention=mention,
-        full_name=target.full_name,
         username=username_str,
         user_id=target.id,
         status=status_label,

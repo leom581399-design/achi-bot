@@ -92,6 +92,11 @@ class Settings:
     tag_batch_size: int = 5
     tag_batch_delay_sec: float = 1.5
 
+    # /broadcast - har guruhga xabar yuborish orasidagi kutish vaqti
+    # (Telegram'ning "bir botdan ko'p guruhga tez-tez xabar yuborish"
+    # flood-limitiga tushib qolmaslik uchun).
+    broadcast_delay_sec: float = 0.05
+
     # ------------------------------------------------------------------
     # CS2 (Counter-Strike 2) narx qidiruvi - SKINPORT.COM
     # ------------------------------------------------------------------

@@ -5,12 +5,36 @@ vaqt oralig'ini parse qilish, mention yasash va h.k.
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+import time
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
 from aiogram.types import Chat, ChatMemberAdministrator, ChatMemberOwner, Message, User
 
 from config import is_super_admin
+
+# O'zbekiston vaqt zonasi - UTC+5, yil davomida o'zgarmaydi (DST yo'q).
+# Railway/serverlar odatda UTC vaqtida ishlaydi, shu sabab barcha
+# foydalanuvchiga ko'rsatiladigan sana/vaqtlarni shu zona bilan
+# hisoblash MUHIM - aks holda "soat hato" bo'lib chiqadi.
+TASHKENT_TZ = timezone(timedelta(hours=5))
+
+
+def now_tashkent() -> datetime:
+    """Hozirgi vaqtni Toshkent vaqt zonasida qaytaradi."""
+    return datetime.now(TASHKENT_TZ)
+
+
+def format_timestamp(ts: float, fmt: str = "%d.%m.%Y %H:%M") -> str:
+    """
+    Unix timestamp'ni (masalan `time.time()` natijasi yoki DB'dagi
+    `created_at`) Toshkent vaqt zonasida, berilgan formatda matnga
+    aylantiradi. Bu funksiya butun loyihada sana/vaqt ko'rsatish uchun
+    YAGONA to'g'ri yo'l - to'g'ridan-to'g'ri `datetime.fromtimestamp()`
+    yoki `time.strftime()` ishlatilmasligi kerak (ular server vaqt
+    zonasini, ya'ni UTC'ni ishlatib, noto'g'ri soat ko'rsatardi).
+    """
+    return datetime.fromtimestamp(ts, tz=TASHKENT_TZ).strftime(fmt)
 
 _DURATION_RE = re.compile(r"^(\d+)\s*([mhdw])$", re.IGNORECASE)
 _UNIT_SECONDS = {
@@ -58,6 +82,30 @@ async def is_target_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     except Exception:
         return False
     return isinstance(member, (ChatMemberAdministrator, ChatMemberOwner))
+
+
+async def bot_can_delete_messages(bot: Bot, chat_id: int) -> bool:
+    """
+    Botning shu guruhda xabar o'chirish huquqi ("can_delete_messages")
+    haqiqatan bor-yo'qligini tekshiradi.
+
+    MUHIM: bu tekshiruv qilinmasa, `/lock` buyrug'i faqat bazaga yozib
+    qo'yib "taqiqlandi" deb aytadi-yu, lekin botda haqiqiy o'chirish
+    huquqi bo'lmasa, keyinchalik kelgan taqiqlangan xabarlar (rasm/gif/
+    sticker/video) o'chmay qoladi - admin esa "ishladi deb yozadi, lekin
+    ishlamaydi" degan holatga tushadi. Guruh EGASI (owner) har doim
+    o'chira oladi (Telegram cheklovi yo'q), oddiy admin bo'lsa faqat
+    `can_delete_messages=True` bo'lsa o'chira oladi.
+    """
+    try:
+        member = await bot.get_chat_member(chat_id, bot.id)
+    except Exception:
+        return False
+    if isinstance(member, ChatMemberOwner):
+        return True
+    if isinstance(member, ChatMemberAdministrator):
+        return bool(member.can_delete_messages)
+    return False
 
 
 async def is_chat_owner(bot: Bot, chat_id: int, user_id: int) -> bool:

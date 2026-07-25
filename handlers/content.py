@@ -1,5 +1,6 @@
 """
-ACHI BOT - filter (avtomatik javob), notes (eslatmalar) va rules (qoidalar).
+ACHI BOT - filter (avtomatik javob), notes (eslatmalar), rules (qoidalar)
+va "personal" (so'z bo'yicha avtomatik o'chirish).
 """
 from __future__ import annotations
 
@@ -100,20 +101,41 @@ async def cmd_filters(message: Message) -> None:
     F.text,
     ~F.text.startswith("/"),
 )
-async def apply_filters_and_notes(message: Message) -> None:
+async def apply_filters_and_notes(message: Message, bot) -> None:
     """
     Guruhdagi oddiy matnli xabarlarni tekshiradi:
-    1. Agar "#nom" bilan boshlansa - eslatmani qidiradi.
-    2. Aks holda - saqlangan filtrlar bilan solishtiradi.
+    1. Avval "personal" so'zlarga qarshi tekshiradi (agar admin bo'lmagan
+       kishi taqiqlangan so'zni yozsa - o'chiriladi, boshqa hech narsa
+       qilinmaydi).
+    2. Agar "#nom" bilan boshlansa - eslatmani qidiradi.
+    3. Aks holda - saqlangan filtrlar bilan solishtiradi.
 
-    (Ikkalasi bitta handlerda, chunki aiogram'da bir update uchun odatda
-    faqat bitta handler ishlaydi - shu sabab ularni ajratib qo'ysak, biri
-    ikkinchisini "yutib qo'yardi".)
+    (Bularning barchasi bitta handlerda, chunki aiogram'da bir update
+    uchun odatda faqat bitta handler ishlaydi - shu sabab ularni ajratib
+    qo'ysak, biri ikkinchisini "yutib qo'yardi".)
     """
     if not message.text:
         return
 
     text = message.text.strip()
+    lowered = text.lower()
+
+    # 1) "Personal" so'zlar - admin bo'lmagan kishi taqiqlangan so'zni
+    # ishlatsa xabarni o'chiramiz. Admin o'zi bu so'zlarni yoza olishi
+    # kerak (masalan tushuntirish/muhokama uchun), shu sabab avval
+    # tekshiramiz.
+    if message.from_user and not await is_chat_admin(
+        bot, message.chat.id, message.from_user.id
+    ):
+        personal_words = await db.list_personal_words(message.chat.id)
+        for word in personal_words:
+            if word in lowered:
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+                return
+
     if text.startswith("#") and len(text) > 1:
         name = text.lstrip("#").split()[0]
         content = await db.get_note(message.chat.id, name)
@@ -124,12 +146,55 @@ async def apply_filters_and_notes(message: Message) -> None:
     all_filters = await db.all_filters(message.chat.id)
     if not all_filters:
         return
-    lowered = text.lower()
     for row in all_filters:
         trigger = row["trigger"]
         if trigger in lowered:
             await message.reply(row["reply"])
             return
+
+
+# ------------------------------------------------------------------
+# Personal - so'z bo'yicha avtomatik o'chirish
+# ------------------------------------------------------------------
+
+
+@router.message(Command("personal"))
+async def cmd_personal(message: Message, command: CommandObject, bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    word = (command.args or "").strip().lower()
+    if not word:
+        await message.reply(texts.PERSONAL_USAGE)
+        return
+    await db.add_personal_word(message.chat.id, word, message.from_user.id)
+    await message.reply(texts.PERSONAL_ADDED.format(word=word))
+
+
+@router.message(Command("stoppersonal"))
+async def cmd_stoppersonal(message: Message, command: CommandObject, bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    word = (command.args or "").strip().lower()
+    if not word:
+        await message.reply(texts.PERSONAL_USAGE)
+        return
+    removed = await db.remove_personal_word(message.chat.id, word)
+    await message.reply(
+        texts.PERSONAL_REMOVED.format(word=word) if removed else texts.PERSONAL_NOT_FOUND
+    )
+
+
+@router.message(Command("personallist"))
+async def cmd_personallist(message: Message) -> None:
+    if message.chat.type not in ("group", "supergroup"):
+        await message.reply(texts.ONLY_IN_GROUP)
+        return
+    words = await db.list_personal_words(message.chat.id)
+    if not words:
+        await message.reply(texts.PERSONAL_LIST_EMPTY)
+        return
+    lines = "\n".join(f"- {w}" for w in words)
+    await message.reply(f"{texts.PERSONAL_LIST_HEADER}\n{lines}")
 
 
 # ------------------------------------------------------------------

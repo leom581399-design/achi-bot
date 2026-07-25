@@ -18,8 +18,9 @@ amal qilinayotganini) aniqlash uchun uchta yo'l bor:
 """
 from __future__ import annotations
 
+import logging
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramAPIError
@@ -30,6 +31,8 @@ import texts
 from config import settings
 from database import db
 from utils import (
+    bot_can_delete_messages,
+    format_timestamp,
     is_chat_admin,
     is_target_admin,
     mention_html,
@@ -39,6 +42,13 @@ from utils import (
 )
 
 router = Router(name="moderation")
+logger = logging.getLogger("achi_bot.moderation")
+
+# Har guruh uchun "menda o'chirish huquqi yo'q" ogohlantirishini oxirgi
+# marta qachon yuborganimiz - har taqiqlangan xabar kelganda emas, faqat
+# vaqti-vaqti bilan (spam bo'lib ketmasligi uchun) yuborish uchun.
+_LOCK_WARNING_COOLDOWN_SEC = 300
+_last_lock_warning: dict[int, float] = {}
 
 _MUTED_PERMISSIONS = ChatPermissions(
     can_send_messages=False,
@@ -442,7 +452,7 @@ async def cmd_warns(message: Message, command: CommandObject, bot: Bot) -> None:
         return
     lines = [texts.WARNS_LIST_HEADER.format(target=mention, count=len(rows), max_warns=settings.max_warns)]
     for i, row in enumerate(rows, start=1):
-        date = datetime.fromtimestamp(row["created_at"]).strftime("%d.%m.%Y %H:%M")
+        date = format_timestamp(row["created_at"])
         lines.append(
             texts.WARNS_LIST_ITEM.format(
                 num=i,
@@ -470,7 +480,15 @@ async def cmd_lock(message: Message, command: CommandObject, bot: Bot) -> None:
         await message.reply(texts.LOCK_TYPE_UNKNOWN)
         return
     await db.set_lock(message.chat.id, lock_type)
-    await message.reply(texts.LOCK_DONE.format(lock_name=texts.LOCK_NAMES[lock_type]))
+    lock_name = texts.LOCK_NAMES[lock_type]
+    # Bazaga yozib qo'yishning o'zi kifoya emas - agar botda haqiqiy
+    # "Delete Messages" huquqi bo'lmasa, keyinchalik taqiqlangan xabarlar
+    # kelganda ularni o'chira olmaymiz. Shu sabab admin darrov (soxta
+    # "muvaffaqiyatli" xabar o'rniga) haqiqiy holatni bilishi kerak.
+    if await bot_can_delete_messages(bot, message.chat.id):
+        await message.reply(texts.LOCK_DONE.format(lock_name=lock_name))
+    else:
+        await message.reply(texts.LOCK_DONE_NO_PERMISSION.format(lock_name=lock_name))
 
 
 @router.message(Command("unlock"))
@@ -549,10 +567,34 @@ async def _check_lock(message: Message, bot: Bot):
 
 @router.message(_check_lock)
 async def enforce_locks(message: Message, lock_content_type: str) -> None:
+    deleted = False
     try:
         await message.delete()
-    except Exception:
-        pass
+        deleted = True
+    except Exception as exc:
+        # Bu yerda jim qolib ketish AYNI shu bug'ning sababi edi: bot
+        # o'chira olmasa ham, hech kim (na admin, na bot) bundan xabar
+        # topmagan - shu sabab endi kamida logga yozamiz va (spam
+        # bo'lmasligi uchun cooldown bilan) guruhga ham ogohlantirish
+        # yuboramiz.
+        logger.warning(
+            "Lock: chat %s'da xabarni o'chira olmadim (%s huquq muammosi bo'lishi mumkin): %s",
+            message.chat.id,
+            lock_content_type,
+            exc,
+        )
+
+    if not deleted:
+        now = time.time()
+        last = _last_lock_warning.get(message.chat.id)
+        if not last or now - last >= _LOCK_WARNING_COOLDOWN_SEC:
+            _last_lock_warning[message.chat.id] = now
+            try:
+                await message.answer(texts.LOCK_DELETE_FAILED_NOTICE)
+            except Exception:
+                pass
+        return
+
     mention = mention_html(message.from_user.id, message.from_user.full_name)
     try:
         await message.answer(texts.LOCKED_CONTENT_REMOVED.format(mention=mention))

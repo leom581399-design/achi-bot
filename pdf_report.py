@@ -24,6 +24,7 @@ from aiosqlite import Row
 from fpdf import FPDF
 
 from config import settings
+from utils import format_timestamp, now_tashkent
 
 _FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 _FONT_FAMILY = "NotoSans"
@@ -181,7 +182,7 @@ def build_pdf(
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, _safe_text(f"Guruh: {chat_title}", unicode_ok), ln=True)
     pdf.cell(0, 8, _safe_text(f"Davr: {period_label}", unicode_ok), ln=True)
-    pdf.cell(0, 8, _safe_text(f"Tayyorlangan vaqt: {time.strftime('%d.%m.%Y %H:%M')}", unicode_ok), ln=True)
+    pdf.cell(0, 8, _safe_text(f"Tayyorlangan vaqt: {now_tashkent().strftime('%d.%m.%Y %H:%M')}", unicode_ok), ln=True)
     pdf.ln(2)
 
     # Qisqa statistika
@@ -252,7 +253,7 @@ def build_pdf(
             pdf.set_x(text_x)
             pdf.use_font("", 9)
             pdf.set_text_color(60, 60, 60)
-            date_str = time.strftime("%d.%m.%Y %H:%M", time.localtime(row.created_at))
+            date_str = format_timestamp(row.created_at)
             reason_text = row.reason or "ko'rsatilmagan"
             pdf.cell(text_w, 5, _safe_text(f"Sabab: {reason_text}", unicode_ok), ln=2)
 

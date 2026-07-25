@@ -11,7 +11,6 @@ import io
 import os
 import time
 import uuid
-from datetime import datetime
 
 from aiogram import Bot, Router
 from aiogram.filters import Command, CommandObject
@@ -22,7 +21,7 @@ from config import settings
 from database import db
 from handlers.premium import is_premium_or_free
 from pdf_report import build_pdf, build_report_rows, summarize
-from utils import is_chat_admin, mention_html, user_display_name
+from utils import format_timestamp, is_chat_admin, mention_html, now_tashkent, user_display_name
 
 router = Router(name="report")
 
@@ -72,7 +71,11 @@ def _period_bounds(arg: str) -> tuple[float, str] | None:
     if arg in ("soat", "hour", "1h"):
         return now - 3600, "so'nggi 1 soat"
     if arg in ("kun", "day", "bugun"):
-        start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Toshkent vaqti bo'yicha "bugun soat 00:00" - server UTC vaqtida
+        # ishlagani uchun datetime.now() ishlatilsa, "bugun" tushunchasi
+        # noto'g'ri (masalan UTC kechqurun bo'lganda Toshkentda ertasi
+        # kun bo'lib qolardi).
+        start_of_day = now_tashkent().replace(hour=0, minute=0, second=0, microsecond=0)
         return start_of_day.timestamp(), "bugungi kun"
     if arg in ("hafta", "week"):
         return now - 7 * 86400, "so'nggi 7 kun"
@@ -133,7 +136,7 @@ async def _send_text_report(message: Message, actions, period_label: str) -> Non
         icon = _ACTION_ICON.get(a["action"], "•")
         title = _ACTION_TITLE.get(a["action"], a["action"])
         target = a["target_username"] and f"@{a['target_username']}" or a["target_name"] or str(a["target_id"])
-        date = datetime.fromtimestamp(a["created_at"]).strftime("%d.%m.%Y %H:%M")
+        date = format_timestamp(a["created_at"])
         line = texts.R_TEXT_ITEM.format(
             num=i,
             icon=icon,
@@ -239,7 +242,7 @@ async def cmd_exportcsv(message: Message, command: CommandObject, bot: Bot) -> N
         ]
     )
     for a in actions:
-        date_str = datetime.fromtimestamp(a["created_at"]).strftime("%d.%m.%Y %H:%M:%S")
+        date_str = format_timestamp(a["created_at"], "%d.%m.%Y %H:%M:%S")
         writer.writerow(
             [
                 date_str,

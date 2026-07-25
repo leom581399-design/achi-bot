@@ -49,6 +49,10 @@ HELP = (
     "/notes - eslatmalar ro'yxati\n"
     "/setrules [matn] - guruh qoidalarini yozish\n"
     "/rules - qoidalarni ko'rish\n\n"
+    "<b>🚫 Personal (so'z bo'yicha avtomatik o'chirish):</b>\n"
+    "/personal so'z - shu so'zni ishlatgan xabarlarni avtomatik o'chirish\n"
+    "/stoppersonal so'z - ro'yxatdan olib tashlash\n"
+    "/personallist - ro'yxatni ko'rish\n\n"
     "<b>📊 Hisobot:</b>\n"
     "/r - shu kunlik/soatlik hisobotni chatga chiqarish\n"
     "/report - hozirgina PDF hisobot tayyorlab beradi\n\n"
@@ -59,6 +63,9 @@ HELP = (
     "/fnew nom - federatsiya yaratish\n"
     "/fjoin fed_id - guruhni federatsiyaga qo'shish\n"
     "/fban, /funban, /finfo, /fleave\n\n"
+    "<b>📢 Bot egasi uchun:</b>\n"
+    "/grantpremium 30d|lifetime - guruhga qo'lda premium berish\n"
+    "/broadcast [matn] - barcha guruhlarga xabar yuborish\n\n"
     "<b>👥 Adminlik va chaqirish:</b>\n"
     "@admin yoki @admins - adminlarni chaqirish\n"
     "/adminber - kimnidir admin qilish (faqat guruh egasi)\n"
@@ -152,12 +159,43 @@ LOCK_TYPE_UNKNOWN = (
     "link, photo, video, sticker, forward, gif, all"
 )
 LOCK_DONE = "🔒 Endi guruhda \"{lock_name}\" taqiqlandi."
+LOCK_DONE_NO_PERMISSION = (
+    "🔒 \"{lock_name}\" taqiqlandi, LEKIN diqqat: menda hali xabar o'chirish "
+    "(\"Delete Messages\") huquqi yo'q ekan - shu sabab taqiqlangan xabarlar "
+    "kelsa ham o'chira olmayman-a. Guruh sozlamalaridan menga admin qilib, "
+    "\"Delete messages\" huquqini yoqib bering, shundan keyin ishlayveradi."
+)
 UNLOCK_DONE = "🔓 \"{lock_name}\" endi ochiq, joylashtirish mumkin."
+LOCK_DELETE_FAILED_NOTICE = (
+    "⚠️ Diqqat, adminlar: taqiqlangan turdagi xabar keldi, lekin menda "
+    "o'chirish huquqi yo'q ekan - o'chira olmadim. Menga \"Delete messages\" "
+    "admin huquqini bering, shundan keyin bunaqa xabarlarni avtomatik "
+    "o'chiraveraman."
+)
 LOCKS_HEADER = "Joriy qulflar:"
 LOCKS_EMPTY = "Hozircha hech narsa qulflanmagan."
 LOCKED_CONTENT_REMOVED = (
     "{mention}, bu turdagi xabar bu yerda taqiqlangan, o'chirib yubordim-a."
 )
+
+# ------------------------------------------------------------------
+# Personal - so'z bo'yicha avtomatik o'chirish
+# ------------------------------------------------------------------
+
+PERSONAL_USAGE = (
+    "Shunday yozing: /personal so'z - shu so'zni ishlatgan xabarlarni "
+    "endi avtomatik o'chiraman (masalan: /personal huylo).\n"
+    "O'chirish uchun: /stoppersonal so'z\n"
+    "Ro'yxatni ko'rish uchun: /personallist"
+)
+PERSONAL_ADDED = (
+    "✅ Xo'p, endi \"{word}\" so'zi ishlatilgan xabarlarni (adminlardan "
+    "tashqari) avtomatik o'chiraman-a."
+)
+PERSONAL_REMOVED = "\"{word}\" ro'yxatdan olib tashlandi, endi o'chirilmaydi."
+PERSONAL_NOT_FOUND = "Bunday so'z ro'yxatda yo'q ekan."
+PERSONAL_LIST_EMPTY = "Hozircha hech qanaqa \"personal\" so'z belgilanmagan."
+PERSONAL_LIST_HEADER = "🚫 Avtomatik o'chiriladigan so'zlar:"
 
 LOCK_NAMES = {
     "link": "havolalar",
@@ -289,6 +327,21 @@ PREMIUM_STATUS_LIFETIME = "✅ Umrbod premium yoqilgan"
 PREMIUM_STATUS_NONE = "❌ Premium yoqilmagan"
 PREMIUM_STATUS_SUPERADMIN = "✅ Siz bot egasisiz, premium funksiyalar sizga har doim tekin 🌹"
 
+# Guruhda premium ALLAQACHON faol bo'lsa /premium yozilganda shu qisqa
+# xabar ko'rsatiladi - narx/tarif QAYTA chiqmaydi (chunki sotib olingan
+# narsani yana sotmoqchi bo'lganday ko'rinib, admin uchun g'alati/keraksiz
+# edi - shu bug tuzatildi).
+PREMIUM_ALREADY_ACTIVE = (
+    "⭐ <b>ACHI BOT Premium</b>\n\n"
+    "{status}\n\n"
+    "Sizda quyidagi premium imkoniyatlar allaqachon ochiq:\n"
+    "🔗 Federatsiya — bir nechta guruhni bog'lab, umumiy ban ro'yxati\n"
+    "📝 Cheksiz filter va eslatma\n"
+    "📁 CSV eksport\n"
+    "📢 /broadcast — barcha bot guruhlariga xabar yuborish\n\n"
+    "Rahmat, akam/opam! Yana narx ko'rsatib o'tirmayman, allaqachon bor-ku 🌹"
+)
+
 PREMIUM_BUTTON_30D = "⭐ 30 kunlik — {price} ⭐"
 PREMIUM_BUTTON_LIFETIME = "⭐ Umrbod — {price} ⭐"
 
@@ -304,6 +357,33 @@ PAYMENT_SUCCESS = (
     "🎉 Rahmat! To'lov qabul qilindi, bu guruhga premium yoqildi.\n"
     "Reja: {plan}\n"
     "Endi federatsiya, cheksiz filter/eslatma va CSV eksportdan foydalanishingiz mumkin 🌹"
+)
+
+# ------------------------------------------------------------------
+# /grantpremium - bot egasi (super-admin) tomonidan qo'lda premium berish
+# ------------------------------------------------------------------
+
+GRANTPREMIUM_ONLY_SUPERADMIN = (
+    "Bu buyruqni faqat bot egasi ishlata oladi-a."
+)
+GRANTPREMIUM_USAGE = (
+    "Shunday yozing:\n"
+    "/grantpremium 30d - joriy guruhga 30 kunlik premium berish "
+    "(guruh ichida yozilsa)\n"
+    "/grantpremium lifetime - joriy guruhga umrbod premium berish\n"
+    "/grantpremium <guruh_id> 30d yoki lifetime - istalgan guruhga "
+    "(guruh ID orqali, hatto boshqa joyda yozsangiz ham) premium berish\n\n"
+    "Guruh ID'larni /achi buyrug'i orqali ko'rishingiz mumkin."
+)
+GRANTPREMIUM_BAD_CHAT_ID = "Guruh ID raqam bo'lishi kerak-a, masalan: -1001234567890"
+GRANTPREMIUM_DONE = (
+    "✅ <b>{chat_title}</b> guruhiga {plan_label} premium berildi!\n"
+    "Buni qilgan: bot egasi"
+)
+GRANTPREMIUM_ANNOUNCE = (
+    "🎉 Diqqat! Bu guruhga ACHI BOT egasi tomonidan {plan_label} premium "
+    "yoqildi. Endi federatsiya, cheksiz filter/eslatma, CSV eksport va "
+    "/broadcast'dan foydalanishingiz mumkin 🌹"
 )
 
 PREMIUM_REQUIRED_FEDERATION = (
@@ -493,6 +573,23 @@ ACHI_ABOUT = (
     "Buyruqlar ro'yxati uchun /help yozing."
 )
 
+# Guruhda /achi buyrug'i berilganda chiqadigan reklama kanallar ro'yxati.
+# MATN VA USERNAME'LAR ANIQ FOYDALANUVCHI BERGANIDEK, O'ZGARTIRMASDAN
+# yozilgan - iltimos, keyingi tahrirlarda ham shu ro'yxatni aynan
+# saqlagan holda o'zgartiring.
+ACHI_GROUP_LINKS = (
+    "\n\n📢 <b>ACHI oilasi kanallari:</b>\n"
+    "CS2 Skin - @AChi_Drop\n"
+    "CS Community- @AChi_Chat\n"
+    "Lis Skins - @AChi_Lisskins\n"
+    "NFT News - @AChi_NFT\n"
+    "NFT Community- @NFT_AChi\n"
+    "PC savdo - @AChi_PC\n"
+    "Mafia gruppa - @AChi_Mafia\n"
+    "NFT rent - @AChi_Rent\n"
+    "CS2 Rek - @AChi_Rek"
+)
+
 
 
 # ------------------------------------------------------------------
@@ -508,7 +605,6 @@ INFO_UNKNOWN_DATE = "noma'lum (men uni ko'rmaganman hali)"
 INFO_RESULT = (
     "👤 <b>Foydalanuvchi profili</b>\n\n"
     "Ism: {mention}\n"
-    "To'liq ism: {full_name}\n"
     "Username: {username}\n"
     "ID: <code>{user_id}</code>\n"
     "Holati: {status}\n"
@@ -533,6 +629,20 @@ CS2_MARKET_FALLBACK_NAME = (
     "ko'rsatilyapti - taxminiy)"
 )
 
+
+# ------------------------------------------------------------------
+# /broadcast - bot egasi tomonidan barcha guruhlarga xabar yuborish
+# ------------------------------------------------------------------
+
+BROADCAST_ONLY_SUPERADMIN = "Bu buyruqni faqat bot egasi ishlata oladi-a."
+BROADCAST_USAGE = (
+    "Shunday yozing: /broadcast matn - shu xabarni bot ishlab turgan "
+    "BARCHA guruhlarga yuboraman."
+)
+BROADCAST_STARTED = "📢 {count} ta guruhga xabar yuborilyapti, biroz kuting..."
+BROADCAST_DONE = "✅ Yuborildi: {success} ta guruhga, {failed} tasiga yetmadi (bot chiqarilgan/bloklangan bo'lishi mumkin)."
+BROADCAST_NO_CHATS = "Hozircha hech qanaqa guruhda ishlamayapman, yuboradigan joy yo'q ekan."
+BROADCAST_MESSAGE_PREFIX = "📢 <b>ACHI BOT e'loni:</b>\n\n"
 
 AUTOAPPROVE_USAGE = "Shunday yozing: /autoapprove on yoki /autoapprove off"
 AUTOAPPROVE_ON = (

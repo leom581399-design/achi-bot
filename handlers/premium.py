@@ -14,11 +14,12 @@ bot `successful_payment` update'ini oladi.
 """
 from __future__ import annotations
 
+import asyncio
 import time
-from datetime import datetime
 
 from aiogram import Bot, F, Router
-from aiogram.filters import Command
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command, CommandObject
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -31,7 +32,7 @@ from aiogram.types import (
 import texts
 from config import is_super_admin, settings
 from database import db
-from utils import is_chat_admin, user_display_name
+from utils import format_timestamp, is_chat_admin, user_display_name
 
 router = Router(name="premium")
 
@@ -79,17 +80,30 @@ async def cmd_premium(message: Message, bot: Bot) -> None:
         await message.reply(texts.PREMIUM_ONLY_IN_GROUP)
         return
 
-    if message.from_user and is_super_admin(message.from_user.id):
+    is_superadmin_caller = bool(message.from_user and is_super_admin(message.from_user.id))
+    row = await db.get_chat_settings(message.chat.id)
+
+    already_active = False
+    if is_superadmin_caller:
         status = texts.PREMIUM_STATUS_SUPERADMIN
+        already_active = True
+    elif row and row["premium_lifetime"]:
+        status = texts.PREMIUM_STATUS_LIFETIME
+        already_active = True
+    elif row and row["premium_until"] and row["premium_until"] > time.time():
+        date_str = format_timestamp(row["premium_until"], "%d.%m.%Y")
+        status = texts.PREMIUM_STATUS_ACTIVE_UNTIL.format(date=date_str)
+        already_active = True
     else:
-        row = await db.get_chat_settings(message.chat.id)
-        if row and row["premium_lifetime"]:
-            status = texts.PREMIUM_STATUS_LIFETIME
-        elif row and row["premium_until"] and row["premium_until"] > time.time():
-            date_str = datetime.fromtimestamp(row["premium_until"]).strftime("%d.%m.%Y")
-            status = texts.PREMIUM_STATUS_ACTIVE_UNTIL.format(date=date_str)
-        else:
-            status = texts.PREMIUM_STATUS_NONE
+        status = texts.PREMIUM_STATUS_NONE
+
+    # Guruhda premium ALLAQACHON faol bo'lsa, narx/tarif tugmalarini
+    # qayta ko'rsatmaymiz - bu adminni "yana sotib olishim kerakmi"
+    # degan chalkashlikka solgan bug edi. Faqat holatni ko'rsatib,
+    # premium imkoniyatlar ro'yxatini eslatib qo'yamiz, xolos.
+    if already_active:
+        await message.reply(texts.PREMIUM_ALREADY_ACTIVE.format(status=status))
+        return
 
     text = texts.PREMIUM_INFO.format(
         free_filter_limit=settings.free_filter_limit,
@@ -179,3 +193,118 @@ async def on_successful_payment(message: Message) -> None:
 
     plan_label = "Umrbod" if lifetime else f"{settings.premium_30d_days} kunlik"
     await message.answer(texts.PAYMENT_SUCCESS.format(plan=plan_label))
+
+
+# ------------------------------------------------------------------
+# /grantpremium - bot egasi (super-admin) tomonidan qo'lda premium berish
+# ------------------------------------------------------------------
+
+
+@router.message(Command("grantpremium"))
+async def cmd_grantpremium(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    Faqat bot egasi (SUPER_ADMINS) ishlatishi mumkin. Ikki xil ishlatish
+    tartibi bor:
+
+    1. Guruh ICHIDA yozilsa: "/grantpremium 30d" yoki "/grantpremium lifetime"
+       - shu joriy guruhga premium beriladi.
+    2. Istalgan joyda (masalan bot egasining shaxsiy chatida) yozilsa:
+       "/grantpremium <chat_id> 30d" yoki "/grantpremium <chat_id> lifetime"
+       - berilgan chat_id'ga premium beriladi (guruhda turib yozish shart
+       emas).
+    """
+    if not message.from_user or not is_super_admin(message.from_user.id):
+        await message.reply(texts.GRANTPREMIUM_ONLY_SUPERADMIN)
+        return
+
+    args = (command.args or "").strip().split()
+    if not args:
+        await message.reply(texts.GRANTPREMIUM_USAGE)
+        return
+
+    target_chat_id: int | None = None
+    plan_token: str
+
+    if len(args) == 1:
+        # Faqat reja ko'rsatilgan - joriy chatga beramiz (guruh bo'lishi kerak).
+        plan_token = args[0].lower()
+        if message.chat.type not in ("group", "supergroup"):
+            await message.reply(texts.GRANTPREMIUM_USAGE)
+            return
+        target_chat_id = message.chat.id
+    else:
+        # Birinchi argument chat_id bo'lishi kerak.
+        chat_id_raw = args[0].lstrip("-")
+        if not chat_id_raw.isdigit():
+            await message.reply(texts.GRANTPREMIUM_BAD_CHAT_ID)
+            return
+        target_chat_id = int(args[0])
+        plan_token = args[1].lower()
+
+    if plan_token not in ("30d", "lifetime"):
+        await message.reply(texts.GRANTPREMIUM_USAGE)
+        return
+
+    lifetime = plan_token == "lifetime"
+    await db.grant_premium(target_chat_id, lifetime=lifetime, days=settings.premium_30d_days)
+
+    plan_label = "Umrbod" if lifetime else f"{settings.premium_30d_days} kunlik"
+
+    row = await db.get_chat_settings(target_chat_id)
+    chat_title = row["chat_title"] if row and row["chat_title"] else str(target_chat_id)
+
+    await message.reply(texts.GRANTPREMIUM_DONE.format(chat_title=chat_title, plan_label=plan_label))
+
+    # Guruhning o'ziga ham "premium yoqildi" deb alohida xabar yuboramiz -
+    # aynan shu narsa yo'qligi ("admin kimdur premium ochsa, premium
+    # ochildi deb aytmaydi") foydalanuvchi shikoyati edi.
+    if target_chat_id != message.chat.id:
+        try:
+            await bot.send_message(
+                target_chat_id, texts.GRANTPREMIUM_ANNOUNCE.format(plan_label=plan_label)
+            )
+        except TelegramAPIError:
+            pass
+
+
+# ------------------------------------------------------------------
+# /broadcast - bot egasi (super-admin) barcha guruhlarga xabar yuborish
+# ------------------------------------------------------------------
+
+
+@router.message(Command("broadcast"))
+async def cmd_broadcast(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    Faqat bot egasi (SUPER_ADMINS) ishlatishi mumkin - bot ishlab turgan
+    BARCHA guruhlarga bir vaqtning o'zida xabar yuboradi. Bu "premium"
+    darajadagi (bot egasiga tegishli) vosita, chunki oddiy admin faqat
+    o'z guruhiga yozadi, bu esa butun tarmoqqa ta'sir qiladi.
+    """
+    if not message.from_user or not is_super_admin(message.from_user.id):
+        await message.reply(texts.BROADCAST_ONLY_SUPERADMIN)
+        return
+
+    text = (command.args or "").strip()
+    if not text:
+        await message.reply(texts.BROADCAST_USAGE)
+        return
+
+    chats = await db.list_all_chats()
+    if not chats:
+        await message.reply(texts.BROADCAST_NO_CHATS)
+        return
+
+    await message.reply(texts.BROADCAST_STARTED.format(count=len(chats)))
+
+    broadcast_text = texts.BROADCAST_MESSAGE_PREFIX + text
+    success = 0
+    failed = 0
+    for row in chats:
+        try:
+            await bot.send_message(row["chat_id"], broadcast_text)
+            success += 1
+        except TelegramAPIError:
+            failed += 1
+        await asyncio.sleep(settings.broadcast_delay_sec)
+
+    await message.answer(texts.BROADCAST_DONE.format(success=success, failed=failed))

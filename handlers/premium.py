@@ -179,3 +179,176 @@ async def on_successful_payment(message: Message) -> None:
 
     plan_label = "Umrbod" if lifetime else f"{settings.premium_30d_days} kunlik"
     await message.answer(texts.PAYMENT_SUCCESS.format(plan=plan_label))
+
+
+# ------------------------------------------------------------------
+# /premiumber - BOT EGASI (super-admin) uchun, FAQAT DM'da: xohlagan
+# guruhga to'lovsiz (bepul) premium berish yoki bekor qilish. Tugmalar
+# orqali guruh, keyin reja tanlanadi - hech qanday to'lov so'ralmaydi.
+# ------------------------------------------------------------------
+
+
+def _premiumber_chats_keyboard(chats: list) -> InlineKeyboardMarkup:
+    now = time.time()
+    rows: list[list[InlineKeyboardButton]] = []
+    for row in chats:
+        is_premium = bool(row["premium_lifetime"]) or (
+            row["premium_until"] and row["premium_until"] > now
+        )
+        mark = "⭐ " if is_premium else ""
+        title = row["chat_title"] or f"ID: {row['chat_id']}"
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{mark}{title}"[:64],
+                    callback_data=f"premberish_chat:{row['chat_id']}",
+                )
+            ]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _premiumber_plan_keyboard(chat_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=texts.PREMIUMBER_BTN_30D,
+                    callback_data=f"premberish_plan:{chat_id}:30d",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=texts.PREMIUMBER_BTN_LIFETIME,
+                    callback_data=f"premberish_plan:{chat_id}:lifetime",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=texts.PREMIUMBER_BTN_REVOKE,
+                    callback_data=f"premberish_plan:{chat_id}:revoke",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=texts.PREMIUMBER_BTN_BACK,
+                    callback_data="premberish_back",
+                )
+            ],
+        ]
+    )
+
+
+async def _chat_status_label(row) -> str:
+    now = time.time()
+    if row["premium_lifetime"]:
+        return "✅ Umrbod premium yoqilgan"
+    if row["premium_until"] and row["premium_until"] > now:
+        date_str = datetime.fromtimestamp(row["premium_until"]).strftime("%d.%m.%Y")
+        return f"✅ Premium yoqilgan, {date_str} gacha"
+    return "❌ Premium yo'q"
+
+
+@router.message(Command("premiumber"))
+async def cmd_premiumber(message: Message, bot: Bot) -> None:
+    if not message.from_user or not is_super_admin(message.from_user.id):
+        # Bot egasi bo'lmaganlarga bu ichki vositaning borligini ham
+        # bildirmaymiz.
+        return
+
+    if message.chat.type != "private":
+        me = await bot.get_me()
+        await message.reply(
+            texts.PREMIUMBER_ONLY_DM.format(bot_username=f"@{me.username}")
+        )
+        return
+
+    chats = await db.list_all_chats()
+    if not chats:
+        await message.answer(texts.PREMIUMBER_NO_CHATS)
+        return
+
+    await message.answer(
+        texts.PREMIUMBER_PICK_CHAT_HEADER,
+        reply_markup=_premiumber_chats_keyboard(chats),
+    )
+
+
+@router.callback_query(F.data == "premberish_back")
+async def on_premiumber_back(callback: CallbackQuery) -> None:
+    if (
+        not callback.message
+        or not callback.from_user
+        or not is_super_admin(callback.from_user.id)
+        or callback.message.chat.type != "private"
+    ):
+        await callback.answer()
+        return
+
+    chats = await db.list_all_chats()
+    await callback.answer()
+    if not chats:
+        await callback.message.edit_text(texts.PREMIUMBER_NO_CHATS)
+        return
+    await callback.message.edit_text(
+        texts.PREMIUMBER_PICK_CHAT_HEADER,
+        reply_markup=_premiumber_chats_keyboard(chats),
+    )
+
+
+@router.callback_query(F.data.startswith("premberish_chat:"))
+async def on_premiumber_pick_chat(callback: CallbackQuery) -> None:
+    if (
+        not callback.message
+        or not callback.from_user
+        or not is_super_admin(callback.from_user.id)
+        or callback.message.chat.type != "private"
+    ):
+        await callback.answer()
+        return
+
+    _, chat_id_str = callback.data.split(":", maxsplit=1)
+    chat_id = int(chat_id_str)
+
+    row = await db.get_chat_settings(chat_id)
+    chat_title = (row["chat_title"] if row else None) or f"ID: {chat_id}"
+    status = await _chat_status_label(row) if row else "❌ Premium yo'q"
+
+    await callback.answer()
+    await callback.message.edit_text(
+        texts.PREMIUMBER_PICK_PLAN_HEADER.format(chat_title=chat_title, status=status),
+        reply_markup=_premiumber_plan_keyboard(chat_id),
+    )
+
+
+@router.callback_query(F.data.startswith("premberish_plan:"))
+async def on_premiumber_pick_plan(callback: CallbackQuery, bot: Bot) -> None:
+    if (
+        not callback.message
+        or not callback.from_user
+        or not is_super_admin(callback.from_user.id)
+        or callback.message.chat.type != "private"
+    ):
+        await callback.answer()
+        return
+
+    _, chat_id_str, plan = callback.data.split(":", maxsplit=2)
+    chat_id = int(chat_id_str)
+
+    row = await db.get_chat_settings(chat_id)
+    chat_title = (row["chat_title"] if row else None) or f"ID: {chat_id}"
+
+    if plan == _PLAN_LIFETIME:
+        await db.grant_premium(chat_id, lifetime=True)
+        result_text = texts.PREMIUMBER_GRANTED_LIFETIME.format(chat_title=chat_title)
+    elif plan == "revoke":
+        await db.revoke_premium(chat_id)
+        result_text = texts.PREMIUMBER_REVOKED.format(chat_title=chat_title)
+    else:
+        await db.grant_premium(
+            chat_id, lifetime=False, days=settings.premium_30d_days
+        )
+        result_text = texts.PREMIUMBER_GRANTED_30D.format(chat_title=chat_title)
+
+    await callback.answer("✅")
+    await callback.message.edit_text(result_text)

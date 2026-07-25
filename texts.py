@@ -322,6 +322,30 @@ PREMIUM_REQUIRED_NOTE_LIMIT = (
     "Cheksiz eslatma uchun /premium yozing."
 )
 
+# --- /premiumber - bot egasi uchun DM'da qo'lda BEPUL premium berish ---
+
+PREMIUMBER_ONLY_DM = (
+    "Bu funksiya faqat botga shaxsiy xabarda (DM) ishlaydi-a. "
+    "Botga shu yerdan yozing: {bot_username}"
+)
+PREMIUMBER_NO_CHATS = "Hozircha bot hech qaysi guruhda ko'rinmayapti."
+PREMIUMBER_PICK_CHAT_HEADER = (
+    "🌹 <b>Qaysi guruhga premium bermoqchisiz/olib tashlamoqchisiz?</b>\n"
+    "(⭐ - hozir premium yoqilgan guruhlar)"
+)
+PREMIUMBER_PICK_PLAN_HEADER = (
+    "<b>{chat_title}</b>\n"
+    "Hozirgi holat: {status}\n\n"
+    "Nima qilamiz?"
+)
+PREMIUMBER_BTN_30D = "🎁 30 kunlik bepul berish"
+PREMIUMBER_BTN_LIFETIME = "🎁 Umrbod bepul berish"
+PREMIUMBER_BTN_REVOKE = "🚫 Premiumni bekor qilish"
+PREMIUMBER_BTN_BACK = "⬅️ Guruhlar ro'yxati"
+PREMIUMBER_GRANTED_30D = "✅ \"{chat_title}\" guruhiga 30 kunlik BEPUL premium berildi."
+PREMIUMBER_GRANTED_LIFETIME = "✅ \"{chat_title}\" guruhiga UMRBOD BEPUL premium berildi."
+PREMIUMBER_REVOKED = "🚫 \"{chat_title}\" guruhining premiumi bekor qilindi."
+
 # ------------------------------------------------------------------
 # Federatsiya
 # ------------------------------------------------------------------

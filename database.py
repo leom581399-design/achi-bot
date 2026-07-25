@@ -571,6 +571,13 @@ class Database:
         new_until = base + days * 86400
         await self.update_chat_setting(chat_id, premium_until=new_until)
 
+    async def revoke_premium(self, chat_id: int) -> None:
+        """Guruhning premium holatini butunlay bekor qiladi (bot egasi
+        DM orqali qo'lda bergan yoki Stars orqali sotib olingan bo'lishidan
+        qat'iy nazar)."""
+        await self.ensure_chat(chat_id, None)
+        await self.update_chat_setting(chat_id, premium_lifetime=0, premium_until=0)
+
     async def record_payment(
         self,
         *,

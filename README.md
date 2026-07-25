@@ -23,8 +23,10 @@ avtomatik vazifalar) asosida yozilgan.
   tizim xabarlarini avtomatik o'chirish
 - `/captcha on|off` — yangi qo'shilganlar tugma bosmaguncha yoza olmaydi
   (90 soniya ichida bosmasa, avtomatik chiqarib yuboriladi)
-- Guruhga **join request** (a'zolikka so'rov) kelsa, avtomatik qabul
-  qilinadi
+- `/autoapprove on|off` — guruhga **join request** (a'zolikka so'rov)
+  kelganda avtomatik qabul qilinsinmi yoki yo'q. **Standart holatda
+  o'chirilgan** — admin ataylab yoqmaguncha, so'rovlar Telegram'ning o'z
+  "join requests" bo'limida qolib, qo'lda ko'rib chiqiladi
 
 ### Filtr, eslatma, qoidalar
 - `/filter so'z | javob`, `/filters`, `/stopfilter so'z`

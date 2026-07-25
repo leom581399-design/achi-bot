@@ -37,7 +37,9 @@ HELP = (
     "/setwelcome [matn] - xush kelibsiz xabarini o'rnatish\n"
     "/setgoodbye [matn] - xayrlashuv xabarini o'rnatish\n"
     "/cleanservice on/off - \"...guruhga qo'shildi\" xabarlarini o'chirish\n"
-    "/captcha on/off - yangi a'zolarga captcha talab qilish\n\n"
+    "/captcha on/off - yangi a'zolarga captcha talab qilish\n"
+    "/autoapprove on/off - qo'shilish so'rovlarini avtomatik qabul qilish "
+    "(standart: o'chirilgan, qo'lda tasdiqlanadi)\n\n"
     "<b>📝 Filtr va eslatmalar:</b>\n"
     "/filter so'z | javob - avtomatik javob o'rnatish\n"
     "/filters - barcha filtrlar ro'yxati\n"
@@ -524,4 +526,14 @@ CS2_MARKET_FALLBACK_NAME = (
     "{requested}\n"
     "⚠️ (bu buyum uchun narx topilmadi, o'rniga oddiy \"{resolved}\" narxi "
     "ko'rsatilyapti - taxminiy)"
+)
+
+
+AUTOAPPROVE_USAGE = "Shunday yozing: /autoapprove on yoki /autoapprove off"
+AUTOAPPROVE_ON = (
+    "✅ Endi guruhga qo'shilish so'rovlari avtomatik qabul qilinadi."
+)
+AUTOAPPROVE_OFF = (
+    "🔒 Avtomatik qabul o'chirildi. Endi qo'shilish so'rovlarini o'zingiz "
+    "qo'lda (Telegram'ning \"join requests\" bo'limidan) ko'rib chiqasiz-a."
 )

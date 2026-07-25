@@ -75,7 +75,12 @@ CREATE TABLE IF NOT EXISTS chat_settings (
     captcha_enabled INTEGER NOT NULL DEFAULT 0,
     report_enabled INTEGER NOT NULL DEFAULT 1,
     premium_until REAL,              -- 30-kunlik premium tugash vaqti (NULL = premium emas)
-    premium_lifetime INTEGER NOT NULL DEFAULT 0  -- 1 = umrbod premium
+    premium_lifetime INTEGER NOT NULL DEFAULT 0,  -- 1 = umrbod premium
+    -- Guruhga qo'shilish so'rovlarini (join request) avtomatik qabul
+    -- qilish. STANDART HOLATDA O'CHIRILGAN (0) - admin ataylab
+    -- /autoapprove on yozmaguncha, so'rovlar qo'lda (admin tomonidan)
+    -- ko'rib chiqiladi.
+    auto_approve_join INTEGER NOT NULL DEFAULT 0
 );
 
 -- Telegram Stars orqali qilingan barcha to'lovlar tarixi (audit uchun)
@@ -175,18 +180,21 @@ class Database:
         """
         `CREATE TABLE IF NOT EXISTS` allaqachon mavjud jadvalga yangi
         ustun qo'shmaydi, shu sabab avval yaratilgan bazalarda (bot
-        yangilanishidan oldin) `known_members.first_seen` ustuni
-        bo'lmasligi mumkin. Shu yerda xavfsiz tekshirib, kerak bo'lsa
-        qo'shamiz (yangi bazalarda bu ustun schema orqali allaqachon bor,
-        shu sabab `duplicate column` xatosini e'tiborsiz qoldiramiz).
+        yangilanishidan oldin) ba'zi ustunlar bo'lmasligi mumkin. Shu
+        yerda xavfsiz tekshirib, kerak bo'lsa qo'shamiz (yangi bazalarda
+        bu ustunlar schema orqali allaqachon bor, shu sabab
+        `duplicate column` xatosini e'tiborsiz qoldiramiz).
         """
-        try:
-            await self.conn.execute(
-                "ALTER TABLE known_members ADD COLUMN first_seen REAL"
-            )
-            await self.conn.commit()
-        except Exception:
-            pass
+        migrations = [
+            "ALTER TABLE known_members ADD COLUMN first_seen REAL",
+            "ALTER TABLE chat_settings ADD COLUMN auto_approve_join INTEGER NOT NULL DEFAULT 0",
+        ]
+        for sql in migrations:
+            try:
+                await self.conn.execute(sql)
+                await self.conn.commit()
+            except Exception:
+                pass
 
     async def close(self) -> None:
         if self._conn:

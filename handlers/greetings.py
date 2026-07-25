@@ -125,6 +125,29 @@ async def cmd_captcha(message: Message, command: CommandObject, bot: Bot) -> Non
     await message.reply(texts.CAPTCHA_ON if arg == "on" else texts.CAPTCHA_OFF)
 
 
+@router.message(Command("autoapprove"))
+async def cmd_autoapprove(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    Guruhga qo'shilish so'rovlarini (join request) avtomatik qabul
+    qilishni yoqish/o'chirish. Standart holatda O'CHIRILGAN - admin
+    ataylab yoqmaguncha, so'rovlar qo'lda (Telegram'ning o'z
+    "join requests" bo'limi orqali) ko'rib chiqiladi.
+    """
+    if not await _guard_admin(message, bot):
+        return
+    arg = (command.args or "").strip().lower()
+    if arg not in ("on", "off"):
+        await message.reply(texts.AUTOAPPROVE_USAGE)
+        return
+    await db.ensure_chat(message.chat.id, message.chat.title)
+    await db.update_chat_setting(
+        message.chat.id, auto_approve_join=1 if arg == "on" else 0
+    )
+    await message.reply(
+        texts.AUTOAPPROVE_ON if arg == "on" else texts.AUTOAPPROVE_OFF
+    )
+
+
 # ------------------------------------------------------------------
 # Yangi a'zo qo'shilishi / chiqishi
 # ------------------------------------------------------------------
@@ -304,12 +327,23 @@ async def sweep_expired_captchas(bot: Bot) -> None:
 
 
 # ------------------------------------------------------------------
-# Join request - avtomatik qabul qilish
+# Join request - avtomatik qabul qilish (ixtiyoriy, /autoapprove orqali)
 # ------------------------------------------------------------------
 
 
 @router.chat_join_request()
 async def on_join_request(request: ChatJoinRequest, bot: Bot) -> None:
+    """
+    MUHIM: bu funksiya faqat guruh admini `/autoapprove on` deb ATAYLAB
+    yoqgan bo'lsa ishlaydi. Standart holatda (sozlama yo'q/off bo'lsa)
+    hech narsa qilmaydi - so'rov Telegram'ning o'z "join requests"
+    bo'limida qolib, admin qo'lda ko'rib chiqadi.
+    """
+    settings_row = await db.get_chat_settings(request.chat.id)
+    auto_approve = bool(settings_row["auto_approve_join"]) if settings_row else False
+    if not auto_approve:
+        return
+
     try:
         await bot.approve_chat_join_request(request.chat.id, request.from_user.id)
     except Exception:

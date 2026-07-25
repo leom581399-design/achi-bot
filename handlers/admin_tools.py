@@ -18,12 +18,12 @@ from datetime import datetime
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import ChatMemberAdministrator, ChatMemberOwner, Message, User
+from aiogram.types import ChatMemberAdministrator, ChatMemberOwner, Message
 
 import texts
 from config import is_super_admin, settings
 from database import db
-from utils import is_chat_admin, is_chat_owner, mention_html, resolve_target_user
+from utils import is_chat_admin, is_chat_owner, mention_html, resolve_target
 
 router = Router(name="admin_tools")
 
@@ -89,36 +89,6 @@ async def on_admin_ping(message: Message, bot: Bot) -> None:
 
 
 # ------------------------------------------------------------------
-# Nishonni aniqlash (reply / text_mention / @username orqali
-# known_members jadvalidan qidirish)
-# ------------------------------------------------------------------
-
-
-async def _resolve_target(message: Message, bot: Bot, args: str | None) -> User | None:
-    target = await resolve_target_user(message, bot)
-    if target:
-        return target
-
-    if not args:
-        return None
-
-    username = args.strip().lstrip("@").split()[0].lower()
-    if not username:
-        return None
-
-    rows = await db.list_known_members(message.chat.id)
-    for row in rows:
-        if row["username"] and row["username"].lower() == username:
-            return User(
-                id=row["user_id"],
-                is_bot=False,
-                first_name=row["full_name"] or username,
-                username=row["username"],
-            )
-    return None
-
-
-# ------------------------------------------------------------------
 # /adminber - admin qilish
 # ------------------------------------------------------------------
 
@@ -134,7 +104,7 @@ async def cmd_adminber(message: Message, command: CommandObject, bot: Bot) -> No
         await message.reply(texts.ADMINBER_ONLY_OWNER)
         return
 
-    target = await _resolve_target(message, bot, command.args)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.ADMINBER_USAGE)
         return
@@ -198,7 +168,7 @@ async def cmd_adminol(message: Message, command: CommandObject, bot: Bot) -> Non
         await message.reply(texts.ADMINOL_ONLY_OWNER)
         return
 
-    target = await _resolve_target(message, bot, command.args)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.ADMINOL_USAGE)
         return
@@ -398,7 +368,7 @@ async def cmd_info(message: Message, command: CommandObject, bot: Bot) -> None:
         await message.reply(texts.ONLY_IN_GROUP)
         return
 
-    target = await _resolve_target(message, bot, command.args)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         # Hech kim ko'rsatilmagan bo'lsa, o'zining profilini ko'rsatamiz.
         target = message.from_user

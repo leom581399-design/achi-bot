@@ -22,7 +22,7 @@ from aiogram.types import Message
 import texts
 from database import db
 from handlers.premium import is_premium_or_free
-from utils import is_chat_admin, mention_html, resolve_target_user, user_display_name
+from utils import is_chat_admin, mention_html, resolve_target, user_display_name
 
 router = Router(name="federation")
 
@@ -145,12 +145,12 @@ async def cmd_fban(message: Message, command: CommandObject, bot: Bot) -> None:
         await message.reply(texts.FED_NOT_IN_ANY)
         return
 
-    target = await resolve_target_user(message, bot)
+    target, remaining_text = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
 
-    reason = (command.args or "").strip() or "ko'rsatilmagan"
+    reason = remaining_text or texts.REASON_NOT_SPECIFIED
     await db.fed_ban(fed_id, target.id, reason, message.from_user.id)
 
     chats = await db.get_federation_chats(fed_id)
@@ -179,7 +179,7 @@ async def cmd_fban(message: Message, command: CommandObject, bot: Bot) -> None:
 
 
 @router.message(Command("funban"))
-async def cmd_funban(message: Message, bot: Bot) -> None:
+async def cmd_funban(message: Message, command: CommandObject, bot: Bot) -> None:
     if not await _guard_admin(message, bot):
         return
 
@@ -188,7 +188,7 @@ async def cmd_funban(message: Message, bot: Bot) -> None:
         await message.reply(texts.FED_NOT_IN_ANY)
         return
 
-    target = await resolve_target_user(message, bot)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return

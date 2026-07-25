@@ -1,31 +1,40 @@
 """
 ACHI BOT - moderatsiya: ban/unban/mute/unmute/kick/warn/unwarn/warns + lock/unlock.
 
-Qoida: agar admin ban/mute/kick/warn buyrug'ini sababsiz yozsa, bot sababni
-so'raydi (FSM orqali) va DB'ga sabab bilan birga yozadi. Sababsiz amal
-bajarilmaydi.
+Qoida: sabab MAJBURIY EMAS - admin xohlasa yozadi, xohlamasa yozmaydi
+(bunday holda "ko'rsatilmagan" deb yoziladi). Nishonni (kimga nisbatan
+amal qilinayotganini) aniqlash uchun uchta yo'l bor:
+
+1. Reply qilib buyruq yozish (masalan xabarga reply qilib "/ban spam")
+2. text_mention (odamni "@" bilan belgilab, Telegram avtomatik taklif
+   qilgan holatda)
+3. Buyruq argumentida to'g'ridan-to'g'ri RAQAMLI Telegram ID yozish
+   (masalan "/ban 8387547842 spam qildi") - bu ODAM GURUHDA HOZIR
+   BO'LMASA HAM ishlaydi, chunki Telegram Bot API ban/mute kabi
+   amallarni foydalanuvchi ID orqali to'g'ridan-to'g'ri bajara oladi
+4. Buyruq argumentida @username yozish (bot avval shu odamni ko'rgan
+   bo'lishi kerak - Telegram Bot API'da "@username orqali ID topish"
+   degan umumiy metod yo'q)
 """
 from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Router
 from aiogram.exceptions import TelegramAPIError
-from aiogram.filters import Command, CommandObject, StateFilter
-from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command, CommandObject
 from aiogram.types import ChatPermissions, Message
 
 import texts
 from config import settings
 from database import db
-from states import ReasonFSM
 from utils import (
     is_chat_admin,
     is_target_admin,
     mention_html,
     parse_duration,
-    resolve_target_user,
+    resolve_target,
     user_display_name,
 )
 
@@ -80,74 +89,6 @@ def _duration_label(delta: timedelta) -> str:
     if total % 3600 == 0:
         return f"{total // 3600} soat"
     return f"{total // 60} daqiqa"
-
-
-async def _start_reason_flow(
-    message: Message,
-    state: FSMContext,
-    *,
-    action: str,
-    target_id: int,
-    target_name: str,
-    target_username: str | None,
-    duration_seconds: int | None = None,
-    duration_label: str | None = None,
-) -> None:
-    await state.set_state(ReasonFSM.waiting_reason)
-    await state.update_data(
-        action=action,
-        chat_id=message.chat.id,
-        chat_title=message.chat.title,
-        target_id=target_id,
-        target_name=target_name,
-        target_username=target_username,
-        admin_id=message.from_user.id,
-        admin_name=user_display_name(message.from_user),
-        duration_seconds=duration_seconds,
-        duration_label=duration_label,
-    )
-    action_label = {
-        "ban": "ban",
-        "tban": "ban",
-        "mute": "mute",
-        "tmute": "mute",
-        "kick": "kick",
-        "warn": "warn",
-    }.get(action, action)
-    await message.reply(texts.ASK_REASON.format(action=action_label))
-
-
-@router.message(StateFilter(ReasonFSM.waiting_reason), Command("cancel"))
-async def cancel_reason_flow(message: Message, state: FSMContext) -> None:
-    await state.clear()
-    await message.reply(texts.ACTION_CANCELLED)
-
-
-@router.message(StateFilter(ReasonFSM.waiting_reason))
-async def receive_reason(message: Message, state: FSMContext, bot: Bot) -> None:
-    if not message.text:
-        await message.reply(texts.ASK_REASON.format(action="amal"))
-        return
-
-    data = await state.get_data()
-    await state.clear()
-
-    reason = message.text.strip()
-    await _execute_action(
-        bot=bot,
-        chat_id=data["chat_id"],
-        chat_title=data.get("chat_title"),
-        action=data["action"],
-        target_id=data["target_id"],
-        target_name=data["target_name"],
-        target_username=data.get("target_username"),
-        admin_id=data["admin_id"],
-        admin_name=data["admin_name"],
-        reason=reason,
-        duration_seconds=data.get("duration_seconds"),
-        duration_label=data.get("duration_label"),
-        reply_message=message,
-    )
 
 
 async def _execute_action(
@@ -311,9 +252,8 @@ async def _execute_action(
             )
 
 
-async def _dispatch_with_reason(
+async def _dispatch(
     message: Message,
-    state: FSMContext,
     bot: Bot,
     command: CommandObject,
     *,
@@ -323,7 +263,7 @@ async def _dispatch_with_reason(
     if not await _guard(message, bot):
         return
 
-    target = await resolve_target_user(message, bot)
+    target, remaining_text = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
@@ -336,97 +276,77 @@ async def _dispatch_with_reason(
         await message.reply(texts.CANT_ACT_ON_ADMIN)
         return
 
-    args = command.args or ""
-    # Reply qilingan bo'lsa, argumentning hammasi duration/reason uchun bo'sh qoladi
     duration_seconds: int | None = None
     duration_label: str | None = None
-    remaining_text = args.strip()
 
     if requires_duration:
-        parts = remaining_text.split(maxsplit=1)
-        if not parts:
-            await message.reply(
-                "Davomiylikni yozing, masalan: 1d, 2h, 30m (masalan: /tban 1d sabab)"
-            )
+        if not remaining_text:
+            await message.reply(texts.DURATION_USAGE)
             return
+        parts = remaining_text.split(maxsplit=1)
         delta = parse_duration(parts[0])
         if not delta:
-            await message.reply(
-                "Davomiylik formati noto'g'ri-a. Masalan: 30m, 2h, 1d, 1w"
-            )
+            await message.reply(texts.DURATION_INVALID)
             return
         duration_seconds = int(delta.total_seconds())
         duration_label = _duration_label(delta)
-        remaining_text = parts[1].strip() if len(parts) > 1 else ""
+        remaining_text = parts[1].strip() if len(parts) > 1 else None
 
-    reason = remaining_text if remaining_text else None
-    target_name = target.full_name
-    target_username = target.username
+    # Sabab MAJBURIY EMAS - yozilmasa standart matn ishlatiladi.
+    reason = remaining_text if remaining_text else texts.REASON_NOT_SPECIFIED
 
-    if reason:
-        await _execute_action(
-            bot=bot,
-            chat_id=message.chat.id,
-            chat_title=message.chat.title,
-            action=action,
-            target_id=target.id,
-            target_name=target_name,
-            target_username=target_username,
-            admin_id=message.from_user.id,
-            admin_name=user_display_name(message.from_user),
-            reason=reason,
-            duration_seconds=duration_seconds,
-            duration_label=duration_label,
-            reply_message=message,
-        )
-    else:
-        await _start_reason_flow(
-            message,
-            state,
-            action=action,
-            target_id=target.id,
-            target_name=target_name,
-            target_username=target_username,
-            duration_seconds=duration_seconds,
-            duration_label=duration_label,
-        )
+    await _execute_action(
+        bot=bot,
+        chat_id=message.chat.id,
+        chat_title=message.chat.title,
+        action=action,
+        target_id=target.id,
+        target_name=target.full_name,
+        target_username=target.username,
+        admin_id=message.from_user.id,
+        admin_name=user_display_name(message.from_user),
+        reason=reason,
+        duration_seconds=duration_seconds,
+        duration_label=duration_label,
+        reply_message=message,
+    )
 
 
 @router.message(Command("ban"))
-async def cmd_ban(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="ban", requires_duration=False)
+async def cmd_ban(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="ban", requires_duration=False)
 
 
 @router.message(Command("tban"))
-async def cmd_tban(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="tban", requires_duration=True)
+async def cmd_tban(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="tban", requires_duration=True)
 
 
 @router.message(Command("mute"))
-async def cmd_mute(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="mute", requires_duration=False)
+async def cmd_mute(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="mute", requires_duration=False)
 
 
 @router.message(Command("tmute"))
-async def cmd_tmute(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="tmute", requires_duration=True)
+async def cmd_tmute(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="tmute", requires_duration=True)
 
 
 @router.message(Command("kick"))
-async def cmd_kick(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="kick", requires_duration=False)
+async def cmd_kick(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="kick", requires_duration=False)
 
 
 @router.message(Command("warn"))
-async def cmd_warn(message: Message, command: CommandObject, state: FSMContext, bot: Bot) -> None:
-    await _dispatch_with_reason(message, state, bot, command, action="warn", requires_duration=False)
+async def cmd_warn(message: Message, command: CommandObject, bot: Bot) -> None:
+    await _dispatch(message, bot, command, action="warn", requires_duration=False)
 
 
 @router.message(Command("unban"))
-async def cmd_unban(message: Message, bot: Bot) -> None:
+async def cmd_unban(message: Message, command: CommandObject, bot: Bot) -> None:
     if not await _guard(message, bot):
         return
-    target = await resolve_target_user(message, bot)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
@@ -450,10 +370,10 @@ async def cmd_unban(message: Message, bot: Bot) -> None:
 
 
 @router.message(Command("unmute"))
-async def cmd_unmute(message: Message, bot: Bot) -> None:
+async def cmd_unmute(message: Message, command: CommandObject, bot: Bot) -> None:
     if not await _guard(message, bot):
         return
-    target = await resolve_target_user(message, bot)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
@@ -479,10 +399,10 @@ async def cmd_unmute(message: Message, bot: Bot) -> None:
 
 
 @router.message(Command("unwarn"))
-async def cmd_unwarn(message: Message, bot: Bot) -> None:
+async def cmd_unwarn(message: Message, command: CommandObject, bot: Bot) -> None:
     if not await _guard(message, bot):
         return
-    target = await resolve_target_user(message, bot)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
@@ -507,11 +427,11 @@ async def cmd_unwarn(message: Message, bot: Bot) -> None:
 
 
 @router.message(Command("warns"))
-async def cmd_warns(message: Message, bot: Bot) -> None:
+async def cmd_warns(message: Message, command: CommandObject, bot: Bot) -> None:
     if message.chat.type not in ("group", "supergroup"):
         await message.reply(texts.ONLY_IN_GROUP)
         return
-    target = await resolve_target_user(message, bot)
+    target, _ = await resolve_target(message, bot, command.args)
     if not target:
         await message.reply(texts.REPLY_NEEDED)
         return
@@ -526,7 +446,7 @@ async def cmd_warns(message: Message, bot: Bot) -> None:
         lines.append(
             texts.WARNS_LIST_ITEM.format(
                 num=i,
-                reason=row["reason"] or "ko'rsatilmagan",
+                reason=row["reason"] or texts.REASON_NOT_SPECIFIED,
                 admin=row["admin_name"] or "?",
                 date=date,
             )

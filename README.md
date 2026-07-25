@@ -11,8 +11,17 @@ avtomatik vazifalar) asosida yozilgan.
 - `/mute`, `/tmute <muddat>`, `/unmute`
 - `/kick`
 - `/warn`, `/unwarn`, `/warns` — 3 marta ogohlantirish yig'ilsa, avtomatik ban
-- **Sababsiz ban/mute/kick/warn qilib bo'lmaydi** — bot sababni so'raydi va
-  bazaga saqlaydi (kim, kimni, nima uchun, qachon)
+- **Nishonni belgilashning 3 yo'li bor:**
+  1. Xabarga **reply** qilib buyruq yozish (masalan reply qilib `/ban spam`)
+  2. Buyruqda to'g'ridan-to'g'ri **raqamli Telegram ID** yozish (masalan
+     `/ban 8387547842 spam qildi`) — bu odam hozir guruhda bo'lmasa ham
+     ishlaydi, chunki Telegram bunday amallarni ID orqali qabul qiladi
+  3. Buyruqda **@username** yozish (bot avval shu odamni ko'rgan bo'lishi
+     kerak, chunki Telegram Bot API'da "@username → ID" ni topishning
+     umumiy usuli yo'q)
+- **Sabab ixtiyoriy** — yozmasangiz ham amal bajariladi, hisobotda "sabab:
+  ko'rsatilmagan" deb yoziladi. Xohlasangiz nishondan keyin (yoki muddatdan
+  keyin, `/tban`/`/tmute` uchun) sababni yozib qo'yishingiz mumkin
 - `/lock`, `/unlock`, `/locks` — link, rasm, video, stiker, forward, gif
   taqiqlash
 

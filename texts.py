@@ -87,14 +87,19 @@ CANT_ACT_ON_SELF = "O'zingizga o'zingiz nima qilasiz, aka? 😄"
 USER_NOT_FOUND = "Bunday odamni topolmadim, tekshirib ko'ring-chi."
 
 # ------------------------------------------------------------------
-# Ban / mute / kick / warn - sabab so'rash (FSM)
+# Ban / mute / kick / warn - sabab va muddat
 # ------------------------------------------------------------------
 
-ASK_REASON = (
-    "Sababsiz {action} qila olmayman-a, tartib shunday! "
-    "Sababini yozib yuboring (yoki /cancel bilan bekor qiling)."
+# Sabab yozilmasa shu matn ko'rsatiladi (sabab MAJBURIY EMAS - admin
+# xohlasa yozadi, xohlamasa yozmaydi).
+REASON_NOT_SPECIFIED = "ko'rsatilmagan"
+
+DURATION_USAGE = (
+    "Davomiylikni yozing, masalan: 1d, 2h, 30m (masalan: /tban 1d sabab)"
 )
-ACTION_CANCELLED = "Xo'p bo'ladi, bekor qildim."
+DURATION_INVALID = (
+    "Davomiylik formati noto'g'ri-a. Masalan: 30m, 2h, 1d, 1w"
+)
 
 BAN_DONE = (
     "🚫 {target} banlandi.\n"

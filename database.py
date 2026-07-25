@@ -742,6 +742,21 @@ class Database:
         )
         return await cursor.fetchone()
 
+    async def get_known_member_by_username(
+        self, chat_id: int, username: str
+    ) -> aiosqlite.Row | None:
+        """
+        @username orqali odamni qidiradi (bot ko'rgan a'zolar ro'yxatidan).
+        Telegram Bot API'da @username -> user_id ni to'g'ridan-to'g'ri
+        olishning tayyor metodi yo'q, shu sabab bot o'zi ko'rgan a'zolar
+        (`known_members`) ichidan qidiramiz.
+        """
+        cursor = await self.conn.execute(
+            "SELECT * FROM known_members WHERE chat_id = ? AND LOWER(username) = ?",
+            (chat_id, username.lower()),
+        )
+        return await cursor.fetchone()
+
     async def remove_known_member(self, chat_id: int, user_id: int) -> None:
         await self.conn.execute(
             "DELETE FROM known_members WHERE chat_id = ? AND user_id = ?",

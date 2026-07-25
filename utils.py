@@ -86,6 +86,10 @@ async def resolve_target_user(message: Message, bot: Bot) -> User | None:
     entity (text_mention) orqali. @username orqali user obyektini
     olish uchun Bot API imkoni cheklangan, shu uchun reply/entity
     ustuvor qilingan.
+
+    Eslatma: buyruq argumentidan (raqamli ID/@username) nishon topish
+    uchun quyidagi `resolve_target()` funksiyasini ishlatish kerak - u
+    ushbu funksiyani ham o'z ichiga oladi.
     """
     if message.reply_to_message and message.reply_to_message.from_user:
         return message.reply_to_message.from_user
@@ -95,4 +99,79 @@ async def resolve_target_user(message: Message, bot: Bot) -> User | None:
             if entity.type == "text_mention" and entity.user:
                 return entity.user
     return None
+
+
+async def resolve_target(
+    message: Message, bot: Bot, args: str | None
+) -> tuple[User | None, str | None]:
+    """
+    Nishonni (kimga nisbatan amal qilinayotganini) va qolgan matnni
+    (sabab/muddat uchun ishlatiladigan qismi) aniqlaydi. Tekshiruv
+    tartibi:
+
+    1. Reply qilingan xabar egasi (bunda `args`ning HAMMASI qolgan
+       matn hisoblanadi, chunki birinchi so'z nishon uchun ishlatilmagan)
+    2. text_mention entity (xuddi shunday)
+    3. `args`ning birinchi so'zi - RAQAMLI Telegram ID (masalan
+       "/ban 8387547842 spam qildi" - bu holatda botning o'zi
+       shu odamni oldin ko'rgan-ko'rmaganidan qat'i nazar ishlaydi,
+       chunki Telegram Bot API ban/mute kabi amallarni ID orqali
+       to'g'ridan-to'g'ri bajara oladi)
+    4. `args`ning birinchi so'zi - @username (bot shu guruhda oldin
+       ko'rgan a'zolar orasidan qidiradi - Telegram Bot API'da
+       "@username orqali ID topish" degan umumiy metod yo'q, shu
+       sabab faqat botning o'z xotirasi orqali ishlaydi)
+
+    :return: (User yoki None, qolgan matn yoki None)
+    """
+    reply_target = await resolve_target_user(message, bot)
+    if reply_target:
+        remaining = (args or "").strip() or None
+        return reply_target, remaining
+
+    if not args or not args.strip():
+        return None, None
+
+    parts = args.strip().split(maxsplit=1)
+    first_token = parts[0]
+    remaining = parts[1].strip() if len(parts) > 1 else None
+    remaining = remaining or None
+
+    # Raqamli Telegram ID (masalan "/ban 8387547842" yoki "/ban -8387547842")
+    stripped_token = first_token.lstrip("-")
+    if stripped_token.isdigit() and stripped_token:
+        user_id = int(first_token)
+        try:
+            member = await bot.get_chat_member(message.chat.id, user_id)
+            return member.user, remaining
+        except Exception:
+            # Bot bu odamni hozir guruh a'zosi sifatida topolmadi (masalan
+            # u hali guruhga umuman kirmagan, yoki allaqachon chiqib
+            # ketgan) - lekin ban/mute kabi amallar Telegram tomonidan
+            # baribir foydalanuvchi ID orqali bajarilishi mumkin, shu
+            # sabab minimal User obyekti yasab qaytaramiz.
+            return (
+                User(id=user_id, is_bot=False, first_name=str(user_id)),
+                remaining,
+            )
+
+    # @username (bot ko'rgan a'zolar ro'yxatidan qidiramiz)
+    if first_token.startswith("@") and len(first_token) > 1:
+        from database import db  # aylanma import'ni oldini olish uchun shu yerda
+
+        username = first_token.lstrip("@")
+        row = await db.get_known_member_by_username(message.chat.id, username)
+        if row:
+            return (
+                User(
+                    id=row["user_id"],
+                    is_bot=False,
+                    first_name=row["full_name"] or username,
+                    username=row["username"],
+                ),
+                remaining,
+            )
+        return None, None
+
+    return None, None
 

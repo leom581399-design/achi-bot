@@ -125,6 +125,17 @@ class Settings:
     # shart (aks holda tez orada 429 xatosiga uchraymiz).
     lis_skins_cache_ttl_sec: int = 10 * 60
 
+    # LIS-SKINS.COM API kaliti (asosiy narx manbasi). Hisobingizda:
+    # https://lis-skins.com -> Steam orqali kiring -> profil sozlamalari
+    # ichidan "API" bo'limini toping -> kalitni generatsiya qiling.
+    # BU YERGA TO'G'RIDAN-TO'G'RI YOZMANG - faqat .env yoki Railway/Fly
+    # "Variables" orqali LIS_SKINS_API_KEY sifatida bering (xavfsizlik
+    # uchun, xuddi BOT_TOKEN kabi). Agar bo'sh bo'lsa, LIS-SKINS manbasi
+    # avtomatik o'tkazib yuboriladi va bot Skinport/Steam'ga o'tadi.
+    lis_skins_api_key: str = field(
+        default_factory=lambda: os.getenv("LIS_SKINS_API_KEY", "").strip()
+    )
+
 
 settings = Settings()
 

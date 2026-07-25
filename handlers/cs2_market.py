@@ -35,6 +35,8 @@ import cs2_items
 import texts
 from config import settings
 
+_LISSKINS_SEARCH_URL = "https://api.lis-skins.com/v1/market/search"
+
 router = Router(name="cs2_market")
 logger = logging.getLogger("achi_bot.cs2_market")
 
@@ -106,7 +108,107 @@ def _extract_item_query(text: str) -> str | None:
 
 
 # ------------------------------------------------------------------
-# SKINPORT.COM (asosiy manba) - rasmiy, ochiq, avtorizatsiyasiz API
+# LIS-SKINS.COM (asosiy manba) - rasmiy Public User API, API kalit
+# talab qiladi (https://lis-skins.stoplight.io/docs/lis-skins/).
+#
+# MUHIM: bu ochiq/avtorizatsiyasiz API EMAS - Skinport'dan farqli
+# o'laroq, LIS-SKINS narx/qidiruv endpointi ham "Authorization: Bearer
+# <api_key>" talab qiladi (hisobingizdan olinadigan shaxsiy kalit).
+# Kalit `settings.lis_skins_api_key` orqali (.env/Railway Variables'dan)
+# o'qiladi. Agar kalit sozlanmagan bo'lsa, bu manba shunchaki o'tkazib
+# yuboriladi va Skinport/Steam'ga o'tiladi - xatolik bermaydi.
+#
+# Eslatma: LIS-SKINS javob formati (JSON maydon nomlari) ochiq hujjatda
+# to'liq ko'rsatilmagan (JS orqali render qilinadi), shu sabab quyidagi
+# parsing kod BIR NECHTA ehtimoliy formatni ("data"/"items" ro'yxati,
+# "price" raqam yoki matn) qamrab oladi va agar kutilmagan format
+# kelsa, WARNING loglarida xom (raw) javobni ko'rsatadi - shu orqali
+# kerak bo'lsa formatni aniq moslashtirish mumkin bo'ladi.
+# ------------------------------------------------------------------
+
+
+async def _fetch_from_lisskins(item_name: str) -> tuple[float, int | None] | None:
+    if not settings.lis_skins_api_key:
+        return None
+
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {settings.lis_skins_api_key}",
+    }
+    params = {
+        "game": "csgo",
+        "names[]": item_name,
+        "sort_by": "lowest_price",
+        "limit": "5",
+    }
+
+    timeout = aiohttp.ClientTimeout(total=settings.cs2_market_timeout_sec)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                _LISSKINS_SEARCH_URL, params=params, headers=headers
+            ) as resp:
+                if resp.status == 401:
+                    logger.warning(
+                        "LIS-SKINS: API kalit noto'g'ri/eskirgan (401) - "
+                        "LIS_SKINS_API_KEY'ni tekshiring."
+                    )
+                    return None
+                if resp.status != 200:
+                    logger.warning(
+                        "LIS-SKINS \"%s\" uchun status=%s qaytardi", item_name, resp.status
+                    )
+                    return None
+                data = await resp.json(content_type=None)
+    except Exception as exc:
+        logger.warning("LIS-SKINS so'rovida xatolik (%s): %r", item_name, exc)
+        return None
+
+    items = None
+    if isinstance(data, dict):
+        for key in ("data", "items", "results"):
+            value = data.get(key)
+            if isinstance(value, list):
+                items = value
+                break
+    elif isinstance(data, list):
+        items = data
+
+    if not items:
+        logger.info(
+            "LIS-SKINS \"%s\" uchun natija topilmadi. Xom javob (formatni "
+            "tekshirish uchun): %.500r",
+            item_name,
+            data,
+        )
+        return None
+
+    prices: list[float] = []
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        raw_price = entry.get("price")
+        if raw_price is None:
+            continue
+        try:
+            prices.append(float(raw_price))
+        except (TypeError, ValueError):
+            continue
+
+    if not prices:
+        logger.warning(
+            "LIS-SKINS \"%s\" - natijalar topildi, lekin narx maydoni "
+            "o'qib bo'lmadi. Birinchi element: %.300r",
+            item_name,
+            items[0] if items else None,
+        )
+        return None
+
+    return min(prices), len(prices)
+
+
+# ------------------------------------------------------------------
+# SKINPORT.COM (zaxira manba) - rasmiy, ochiq, avtorizatsiyasiz API
 # https://docs.skinport.com/items
 # ------------------------------------------------------------------
 
@@ -287,11 +389,17 @@ _RARE_PREFIXES = ("Souvenir ", "StatTrak™ ")
 
 
 async def _fetch_price_for_name(item_name: str) -> tuple[float, int | None, str] | None:
-    """Avval Skinport, topilmasa Steam'dan narxni oladi (bitta nom uchun)."""
+    """Avval LIS-SKINS, topilmasa Skinport, u ham topilmasa Steam'dan
+    narxni oladi (bitta nom uchun)."""
+    lisskins_result = await _fetch_from_lisskins(item_name)
+    if lisskins_result is not None:
+        price, count = lisskins_result
+        return price, count, texts.CS2_MARKET_SOURCE_LISSKINS
+
     skinport_result = await _fetch_from_skinport(item_name)
     if skinport_result is not None:
         price, count = skinport_result
-        return price, count, texts.CS2_MARKET_SOURCE_LISSKINS
+        return price, count, texts.CS2_MARKET_SOURCE_SKINPORT
 
     steam_result = await _fetch_from_steam(item_name)
     if steam_result is not None:

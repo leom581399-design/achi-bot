@@ -503,6 +503,30 @@ async def cmd_unlock(message: Message, command: CommandObject, bot: Bot) -> None
     await message.reply(texts.UNLOCK_DONE.format(lock_name=texts.LOCK_NAMES[lock_type]))
 
 
+@router.message(Command("aimod"))
+async def cmd_aimod(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    AI-yordamchi moderatsiyani (premium funksiya) yoqish/o'chirish.
+    Yoqilganda matnli xabarlar spam/haqoratga o'xshab ko'rinsa avtomatik
+    o'chiriladi (adminlarga tegilmaydi).
+    """
+    if not await _guard(message, bot):
+        return
+
+    if not await db.is_chat_premium(message.chat.id):
+        await message.reply(texts.AI_MODERATION_REQUIRES_PREMIUM)
+        return
+
+    arg = (command.args or "").strip().lower()
+    if arg not in ("on", "off"):
+        await message.reply(texts.AI_MODERATION_USAGE)
+        return
+
+    await db.ensure_chat(message.chat.id, message.chat.title)
+    await db.update_chat_setting(message.chat.id, ai_moderation_enabled=1 if arg == "on" else 0)
+    await message.reply(texts.AI_MODERATION_ON if arg == "on" else texts.AI_MODERATION_OFF)
+
+
 @router.message(Command("locks"))
 async def cmd_locks(message: Message, bot: Bot) -> None:
     if message.chat.type not in ("group", "supergroup"):
@@ -563,6 +587,58 @@ async def _check_lock(message: Message, bot: Bot):
         return False
 
     return {"lock_content_type": content_type}
+
+
+async def _check_ai_moderation(message: Message, bot: Bot):
+    """
+    Filtr sifatida ishlatiladi (xuddi `_check_lock` kabi) - faqat
+    quyidagi shartlar TO'LIQ bajarilgandagina True qaytaradi:
+    1. Guruh xabari, matnli, bot emas
+    2. Yozgan kishi admin EMAS (adminlarga tegilmaydi)
+    3. Guruhda "aqlli moderatsiya" (AI_MODERATION) YOQILGAN
+    4. Guruhda premium bor (bu premium funksiya)
+    5. AI/heuristic tekshiruvi xabarni spam/haqorat deb topdi
+
+    Filtrning o'zi tekshiruvni bajaradi (handler ichida emas) - sababi
+    xuddi lock filtrida yozilgani kabi: aiogram filtr True qaytarganda
+    xabarni "band qilindi" deb hisoblaydi, shu sabab tekshiruv batafsil
+    shu yerda tugashi kerak.
+    """
+    if not message.text or not message.from_user or message.from_user.is_bot:
+        return False
+    if message.chat.type not in ("group", "supergroup"):
+        return False
+    if await is_chat_admin(bot, message.chat.id, message.from_user.id):
+        return False
+
+    settings_row = await db.get_chat_settings(message.chat.id)
+    if not settings_row or not settings_row["ai_moderation_enabled"]:
+        return False
+
+    if not await db.is_chat_premium(message.chat.id):
+        return False
+
+    from handlers.ai import classify_message
+
+    verdict = await classify_message(message.text)
+    if not verdict:
+        return False
+    return {"ai_reason": verdict[1]}
+
+
+@router.message(_check_ai_moderation)
+async def enforce_ai_moderation(message: Message, ai_reason: str) -> None:
+    try:
+        await message.delete()
+    except Exception:
+        logger.warning(
+            "AI moderatsiya: chat %s'da xabarni o'chira olmadim: %s", message.chat.id, ai_reason
+        )
+        return
+    try:
+        await message.answer(texts.AI_MODERATION_REMOVED.format(reason=ai_reason))
+    except Exception:
+        pass
 
 
 @router.message(_check_lock)

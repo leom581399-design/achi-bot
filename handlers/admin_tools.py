@@ -339,9 +339,9 @@ async def cmd_achi(message: Message) -> None:
     for row in chats:
         title = row["chat_title"] or f"ID: {row['chat_id']}"
         if row["premium_lifetime"]:
-            premium_mark = " ⭐(umrbod)"
+            premium_mark = " (premium, umrbod)"
         elif row["premium_until"] and row["premium_until"] > now:
-            premium_mark = " ⭐"
+            premium_mark = " (premium)"
         else:
             premium_mark = ""
         lines.append(texts.ACHI_GROUPS_ITEM.format(title=title, premium=premium_mark))
@@ -397,12 +397,12 @@ async def cmd_info(message: Message, command: CommandObject, bot: Bot) -> None:
         status = "noma'lum"
 
     status_label = {
-        "creator": "Guruh egasi 👑",
-        "administrator": "Admin 🛡",
+        "creator": "Guruh egasi",
+        "administrator": "Admin",
         "member": "Oddiy a'zo",
-        "restricted": "Cheklangan (mute) 🔇",
+        "restricted": "Cheklangan (mute)",
         "left": "Guruhda yo'q",
-        "kicked": "Banlangan 🚫",
+        "kicked": "Banlangan",
     }.get(status, "Noma'lum")
 
     warn_count = await db.count_warns(message.chat.id, target.id)

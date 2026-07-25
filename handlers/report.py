@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import os
 import time
 import uuid
@@ -24,20 +25,7 @@ from pdf_report import build_pdf, build_report_rows, summarize
 from utils import format_timestamp, is_chat_admin, mention_html, now_tashkent, user_display_name
 
 router = Router(name="report")
-
-_ACTION_ICON = {
-    "ban": "🚫",
-    "tban": "🚫",
-    "unban": "✅",
-    "mute": "🔇",
-    "tmute": "🔇",
-    "unmute": "🔊",
-    "kick": "👋",
-    "warn": "⚠️",
-    "unwarn": "↩️",
-    "promote": "⭐",
-    "demote": "🔻",
-}
+logger = logging.getLogger("achi_bot.report")
 
 _ACTION_TITLE = {
     "ban": "Ban",
@@ -126,35 +114,75 @@ async def cmd_r(message: Message, command: CommandObject, bot: Bot) -> None:
     await _send_text_report(message, actions, period_label)
 
 
-async def _send_text_report(message: Message, actions, period_label: str) -> None:
+def _format_action_line(i: int, a) -> str:
+    title = _ACTION_TITLE.get(a["action"], a["action"])
+    target = a["target_username"] and f"@{a['target_username']}" or a["target_name"] or str(a["target_id"])
+    date = format_timestamp(a["created_at"])
+    return texts.R_TEXT_ITEM.format(
+        num=i,
+        action=title,
+        target=target,
+        reason=a["reason"] or "ko'rsatilmagan",
+        admin=a["admin_name"] or "-",
+        date=date,
+    )
+
+
+async def build_text_report_chunks(
+    chat_title: str, actions, period_label: str, *, with_ai_summary: bool = False
+) -> list[str]:
+    """
+    `/r` matnli hisobotini tayyorlaydi va Telegram xabar uzunligi
+    chegarasiga (4096) mos qilib bo'laklarga (chunk) bo'ladi.
+
+    MUHIM: bu funksiya `Message`ga bog'liq EMAS - faqat oddiy ma'lumot
+    qabul qilib, matn qaytaradi. Shu sabab uni ham guruh ichidagi /r
+    buyrug'idan, ham DM boshqarish panelidan (handlers/panel.py) bab-
+    baravar chaqirish mumkin - avvalgi versiyada bu funksiya to'g'ridan-
+    to'g'ri `message.answer()` chaqirardi, shu sabab faqat guruh ichida
+    ishlay olardi.
+    """
     if not actions:
-        await message.reply(texts.REPORT_EMPTY_PERIOD)
-        return
+        return [texts.REPORT_EMPTY_PERIOD]
 
-    lines = [texts.R_TEXT_HEADER.format(period=period_label, chat_title=message.chat.title or "")]
+    chunks: list[str] = []
+    lines = [texts.R_TEXT_HEADER.format(period=period_label, chat_title=chat_title or "")]
     for i, a in enumerate(actions, start=1):
-        icon = _ACTION_ICON.get(a["action"], "•")
-        title = _ACTION_TITLE.get(a["action"], a["action"])
-        target = a["target_username"] and f"@{a['target_username']}" or a["target_name"] or str(a["target_id"])
-        date = format_timestamp(a["created_at"])
-        line = texts.R_TEXT_ITEM.format(
-            num=i,
-            icon=icon,
-            action=title,
-            target=target,
-            reason=a["reason"] or "ko'rsatilmagan",
-            admin=a["admin_name"] or "-",
-            date=date,
-        )
-        lines.append(line)
-
-        # Telegram xabar uzunligi cheklangan (4096), shu uchun bo'lib yuboramiz
+        lines.append(_format_action_line(i, a))
         if sum(len(l) for l in lines) > 3500:
-            await message.answer("\n".join(lines))
+            chunks.append("\n".join(lines))
             lines = []
-
     if lines:
-        await message.answer("\n".join(lines))
+        chunks.append("\n".join(lines))
+
+    # AI-yordamchi xulosa (premium funksiya) - agar AI sozlangan bo'lsa,
+    # hisobot oxiriga qisqa inson-tilidagi xulosa qo'shiladi. AI
+    # sozlanmagan/ishlamagan bo'lsa `summarize_report` None qaytaradi va
+    # hisobot odatdagidek (xulosasiz) ko'rsatiladi - hech qanday xato
+    # bermaydi.
+    if with_ai_summary:
+        try:
+            from handlers.ai import summarize_report
+
+            action_lines = [_format_action_line(i, a) for i, a in enumerate(actions, start=1)]
+            summary_text = await summarize_report(period_label, chat_title, action_lines)
+            if summary_text:
+                chunks.append(texts.R_AI_SUMMARY.format(summary=summary_text))
+        except Exception:
+            logger.exception("AI xulosasini tayyorlashda xatolik")
+
+    return chunks
+
+
+async def _send_text_report(message: Message, actions, period_label: str) -> None:
+    # AI xulosa - PREMIUM funksiya (bepul guruhlarda oddiy ro'yxat
+    # ko'rsatiladi, xulosasiz).
+    with_ai = await is_premium_or_free(message.chat.id, message.from_user.id if message.from_user else None)
+    chunks = await build_text_report_chunks(
+        message.chat.title or "", actions, period_label, with_ai_summary=with_ai
+    )
+    for chunk in chunks:
+        await message.answer(chunk)
 
 
 @router.message(Command("report"))
@@ -167,22 +195,44 @@ async def cmd_report(message: Message, command: CommandObject, bot: Bot) -> None
     since_ts, period_label = bounds
 
     await message.reply(texts.REPORT_GENERATING)
-    await _generate_and_send_pdf(bot, message.chat.id, message.chat.title or "Guruh", since_ts, period_label, message)
+    await generate_and_send_pdf(
+        bot, message.chat.id, message.chat.title or "Guruh", since_ts, period_label,
+        reply_target=message,
+    )
 
 
-async def _generate_and_send_pdf(
+async def generate_and_send_pdf(
     bot: Bot,
-    chat_id: int,
+    source_chat_id: int,
     chat_title: str,
     since_ts: float,
     period_label: str,
+    *,
+    send_to_chat_id: int | None = None,
     reply_target: Message | None = None,
-) -> None:
-    actions = await db.get_actions_since(chat_id, since_ts)
+) -> bool:
+    """
+    Berilgan guruh (`source_chat_id`) uchun PDF hisobot tayyorlab,
+    `send_to_chat_id`ga (agar berilmasa, `source_chat_id`ning o'ziga)
+    yuboradi.
+
+    MUHIM: `send_to_chat_id` ajratilgani DM boshqarish panelidan
+    chaqirish uchun kerak - masalan admin DM'dan "Hisobot" tugmasini
+    bossa, hisobot GURUH tarixidan (`source_chat_id`) olinadi, lekin
+    fayl ADMINning shaxsiy chatiga (`send_to_chat_id` = admin DM'i)
+    yuboriladi. Guruh ichidagi /report esa ikkisini bir xil qilib
+    chaqiradi (o'z-o'ziga yuboradi).
+
+    :return: True agar hisobot (hech bo'lmasa bo'sh-emas holatda)
+        muvaffaqiyatli yuborilgan bo'lsa, aks holda False.
+    """
+    target_chat_id = send_to_chat_id if send_to_chat_id is not None else source_chat_id
+
+    actions = await db.get_actions_since(source_chat_id, since_ts)
     if not actions:
         if reply_target:
             await reply_target.answer(texts.REPORT_EMPTY_PERIOD)
-        return
+        return False
 
     rows = await build_report_rows(bot, actions, avatar_cache_dir=f"{settings.reports_dir}/avatars")
     summary = summarize(actions)
@@ -199,32 +249,30 @@ async def _generate_and_send_pdf(
         warn_count=summary.get("warn", 0),
         kick_count=summary.get("kick", 0),
     )
-    await bot.send_document(chat_id, FSInputFile(pdf_path), caption=caption)
+    await bot.send_document(target_chat_id, FSInputFile(pdf_path), caption=caption)
+    return True
 
 
-@router.message(Command("exportcsv"))
-async def cmd_exportcsv(message: Message, command: CommandObject, bot: Bot) -> None:
-    """
-    /exportcsv [soat|kun|hafta] - premium funksiya. Hisobotni Excel'da
-    ochish uchun CSV faylga aylantirib beradi.
-    """
-    if not await _guard_admin(message, bot):
-        return
+async def generate_and_send_csv(
+    bot: Bot,
+    source_chat_id: int,
+    chat_title: str,
+    since_ts: float,
+    period_label: str,
+    *,
+    send_to_chat_id: int | None = None,
+    reply_target: Message | None = None,
+) -> bool:
+    """CSV eksport mantiqi - guruh ichidagi /exportcsv va DM panelidan
+    ikkisi ham shu funksiyani chaqiradi (qarang: generate_and_send_pdf
+    yuqorida, xuddi shu naqsh bilan)."""
+    target_chat_id = send_to_chat_id if send_to_chat_id is not None else source_chat_id
 
-    if not await is_premium_or_free(message.chat.id, message.from_user.id):
-        await message.reply(texts.PREMIUM_REQUIRED_EXPORT)
-        return
-
-    arg = (command.args or "hafta").strip().lower()
-    bounds = _period_bounds(arg) or (time.time() - 7 * 86400, "so'nggi 7 kun")
-    since_ts, period_label = bounds
-
-    await message.reply(texts.EXPORT_GENERATING)
-
-    actions = await db.get_actions_since(message.chat.id, since_ts)
+    actions = await db.get_actions_since(source_chat_id, since_ts)
     if not actions:
-        await message.reply(texts.REPORT_EMPTY_PERIOD)
-        return
+        if reply_target:
+            await reply_target.answer(texts.REPORT_EMPTY_PERIOD)
+        return False
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -263,11 +311,34 @@ async def cmd_exportcsv(message: Message, command: CommandObject, bot: Bot) -> N
     filename = f"achi_export_{uuid.uuid4().hex[:8]}.csv"
 
     await bot.send_document(
-        message.chat.id,
+        target_chat_id,
         BufferedInputFile(csv_bytes, filename=filename),
-        caption=texts.EXPORT_CAPTION.format(
-            period=period_label, chat_title=message.chat.title or ""
-        ),
+        caption=texts.EXPORT_CAPTION.format(period=period_label, chat_title=chat_title or ""),
+    )
+    return True
+
+
+@router.message(Command("exportcsv"))
+async def cmd_exportcsv(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    /exportcsv [soat|kun|hafta] - premium funksiya. Hisobotni Excel'da
+    ochish uchun CSV faylga aylantirib beradi.
+    """
+    if not await _guard_admin(message, bot):
+        return
+
+    if not await is_premium_or_free(message.chat.id, message.from_user.id):
+        await message.reply(texts.PREMIUM_REQUIRED_EXPORT)
+        return
+
+    arg = (command.args or "hafta").strip().lower()
+    bounds = _period_bounds(arg) or (time.time() - 7 * 86400, "so'nggi 7 kun")
+    since_ts, period_label = bounds
+
+    await message.reply(texts.EXPORT_GENERATING)
+    await generate_and_send_csv(
+        bot, message.chat.id, message.chat.title or "", since_ts, period_label,
+        reply_target=message,
     )
 
 

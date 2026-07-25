@@ -132,23 +132,41 @@ async def on_premium_buy_button(callback: CallbackQuery, bot: Bot) -> None:
     await _send_invoice(bot, chat_id, plan)
 
 
-async def _send_invoice(bot: Bot, chat_id: int, plan: str) -> None:
+async def _send_invoice(
+    bot: Bot, invoice_chat_id: int, plan: str, *, target_group_chat_id: int | None = None
+) -> None:
+    """
+    Hisob-varaqa (invoice) yuboradi.
+
+    `invoice_chat_id` - hisob-varaqa QAYERGA yuborilishi (odatda guruhning
+    o'zi, LEKIN DM boshqarish panelidan chaqirilganda bu ADMINning
+    shaxsiy chati bo'ladi - to'lov guruh ichida emas, DM'da amalga
+    oshadi).
+
+    `target_group_chat_id` - premium QAYSI guruhga beriladi (agar
+    berilmasa, `invoice_chat_id` bilan bir xil - guruh ichidan
+    chaqirilgan holat). Bu ikkisi DM orqali sotib olishda FARQLI
+    bo'lishi kerak, shu sabab alohida parametr qilingan.
+    """
+    target_group_chat_id = (
+        target_group_chat_id if target_group_chat_id is not None else invoice_chat_id
+    )
     if plan == _PLAN_LIFETIME:
         title = texts.INVOICE_TITLE_LIFETIME
         description = texts.INVOICE_DESC_LIFETIME
         price = settings.premium_lifetime_price_stars
-        payload = f"premium:{_PLAN_LIFETIME}:{chat_id}"
+        payload = f"premium:{_PLAN_LIFETIME}:{target_group_chat_id}"
     else:
         plan = _PLAN_30D
         title = texts.INVOICE_TITLE_30D
         description = texts.INVOICE_DESC_30D
         price = settings.premium_30d_price_stars
-        payload = f"premium:{_PLAN_30D}:{chat_id}"
+        payload = f"premium:{_PLAN_30D}:{target_group_chat_id}"
 
     # Telegram Stars uchun currency doim "XTR", provider_token bo'sh
     # bo'lishi kerak (Stars uchun tashqi to'lov provideri kerak emas).
     await bot.send_invoice(
-        chat_id=chat_id,
+        chat_id=invoice_chat_id,
         title=title,
         description=description,
         payload=payload,
@@ -329,7 +347,7 @@ def _premiumber_chats_keyboard(chats: list) -> InlineKeyboardMarkup:
         is_premium = bool(row["premium_lifetime"]) or (
             row["premium_until"] and row["premium_until"] > now
         )
-        mark = "⭐ " if is_premium else ""
+        mark = "* " if is_premium else ""
         title = row["chat_title"] or f"ID: {row['chat_id']}"
         rows.append(
             [
@@ -376,7 +394,7 @@ def _premiumber_plan_keyboard(chat_id: int) -> InlineKeyboardMarkup:
 async def _chat_status_label(row) -> str:
     now = time.time()
     if row["premium_lifetime"]:
-        return "✅ Umrbod premium yoqilgan"
+        return "Umrbod premium yoqilgan"
     if row["premium_until"] and row["premium_until"] > now:
         # MUHIM: `datetime.fromtimestamp()` to'g'ridan-to'g'ri ishlatilsa,
         # server (Railway) UTC vaqt zonasida ishlagani uchun sana noto'g'ri
@@ -384,8 +402,8 @@ async def _chat_status_label(row) -> str:
         # yagona to'g'ri vositasi `format_timestamp()` (Toshkent, UTC+5)
         # ishlatiladi, xuddi boshqa hamma joyda bo'lgani kabi.
         date_str = format_timestamp(row["premium_until"], "%d.%m.%Y")
-        return f"✅ Premium yoqilgan, {date_str} gacha"
-    return "❌ Premium yo'q"
+        return f"Premium yoqilgan, {date_str} gacha"
+    return "Premium yo'q"
 
 
 @router.message(Command("premiumber"))
@@ -451,7 +469,7 @@ async def on_premiumber_pick_chat(callback: CallbackQuery) -> None:
 
     row = await db.get_chat_settings(chat_id)
     chat_title = (row["chat_title"] if row else None) or f"ID: {chat_id}"
-    status = await _chat_status_label(row) if row else "❌ Premium yo'q"
+    status = await _chat_status_label(row) if row else "Premium yo'q"
 
     await callback.answer()
     await callback.message.edit_text(
@@ -489,5 +507,5 @@ async def on_premiumber_pick_plan(callback: CallbackQuery, bot: Bot) -> None:
         )
         result_text = texts.PREMIUMBER_GRANTED_30D.format(chat_title=chat_title)
 
-    await callback.answer("✅")
+    await callback.answer("OK")
     await callback.message.edit_text(result_text)

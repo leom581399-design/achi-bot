@@ -16,7 +16,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import texts
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
 from config import settings
@@ -28,6 +28,7 @@ from handlers import (
     federation,
     greetings,
     moderation,
+    panel,
     premium,
     report,
 )
@@ -40,16 +41,18 @@ logging.basicConfig(
 logger = logging.getLogger("achi_bot")
 
 
-async def cmd_start(message: Message) -> None:
-    await message.answer(texts.START)
-
-
 async def cmd_help(message: Message) -> None:
     await message.answer(texts.HELP)
 
 
 def register_basic_handlers(dp: Dispatcher) -> None:
-    dp.message.register(cmd_start, Command("start"))
+    # /start endi handlers/panel.py'da - chunki u deep-link payload
+    # ("panel_<chat_id>") orqali to'g'ridan-to'g'ri guruh menyusiga
+    # o'tkazib yuborishi kerak (bot guruhga qo'shilgach yuboriladigan
+    # onboarding tugmasi shu payload'ni ishlatadi).
+    dp.message.register(panel.cmd_start, CommandStart(deep_link=True))
+    dp.message.register(panel.cmd_start, Command("start"))
+    dp.message.register(panel.cmd_panel, Command("panel"))
     dp.message.register(cmd_help, Command("help"))
 
 
@@ -124,6 +127,7 @@ async def main() -> None:
     # chunki ular @admin/@admins va ".skin"/".oruzhiya" bilan boshlangan
     # matnlarni ushlab qolishi kerak, aks holda content.router'dagi
     # filter/eslatma catch-all handleri ularni "yutib qo'yishi" mumkin edi.
+    dp.include_router(panel.router)
     dp.include_router(moderation.router)
     dp.include_router(premium.router)
     dp.include_router(federation.router)

@@ -93,7 +93,12 @@ CREATE TABLE IF NOT EXISTS chat_settings (
     -- qilish. STANDART HOLATDA O'CHIRILGAN (0) - admin ataylab
     -- /autoapprove on yozmaguncha, so'rovlar qo'lda (admin tomonidan)
     -- ko'rib chiqiladi.
-    auto_approve_join INTEGER NOT NULL DEFAULT 0
+    auto_approve_join INTEGER NOT NULL DEFAULT 0,
+    -- AI-yordamchi moderatsiya (premium funksiya): yoqilgan bo'lsa, har
+    -- bir matnli xabar spam/haqoratga o'xshab ko'rinsa avtomatik
+    -- o'chiriladi. STANDART HOLATDA O'CHIRILGAN - admin DM panel orqali
+    -- (yoki /aimod on) o'zi yoqadi.
+    ai_moderation_enabled INTEGER NOT NULL DEFAULT 0
 );
 
 -- Telegram Stars orqali qilingan barcha to'lovlar tarixi (audit uchun)
@@ -201,6 +206,7 @@ class Database:
         migrations = [
             "ALTER TABLE known_members ADD COLUMN first_seen REAL",
             "ALTER TABLE chat_settings ADD COLUMN auto_approve_join INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN ai_moderation_enabled INTEGER NOT NULL DEFAULT 0",
         ]
         for sql in migrations:
             try:

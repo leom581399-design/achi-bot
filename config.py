@@ -147,6 +147,28 @@ class Settings:
         default_factory=lambda: os.getenv("LIS_SKINS_API_KEY", "").strip()
     )
 
+    # ------------------------------------------------------------------
+    # AI-yordamchi funksiyalar (premium) - AQLLI moderatsiya va AQLLI
+    # hisobot xulosasi
+    # ------------------------------------------------------------------
+    # OpenAI-mos (Chat Completions) API. Agar AI_API_KEY bo'sh bo'lsa,
+    # bu ikki funksiya ODDIY (kalitsiz) qoida-asosli zaxira mantiqqa
+    # o'tadi - bot baribir ishlayveradi, faqat "aqli" kamroq bo'ladi.
+    # BU YERGA TO'G'RIDAN-TO'G'RI KALIT YOZMANG - faqat .env/Railway/Fly
+    # "Variables" orqali beriladi (xuddi BOT_TOKEN kabi).
+    ai_api_key: str = field(default_factory=lambda: os.getenv("AI_API_KEY", "").strip())
+    ai_api_url: str = field(
+        default_factory=lambda: os.getenv(
+            "AI_API_URL", "https://api.openai.com/v1/chat/completions"
+        ).strip()
+    )
+    ai_model: str = field(default_factory=lambda: os.getenv("AI_MODEL", "gpt-4o-mini").strip())
+    ai_timeout_sec: float = 12.0
+
+    @property
+    def ai_enabled(self) -> bool:
+        return bool(self.ai_api_key)
+
 
 settings = Settings()
 

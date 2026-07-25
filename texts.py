@@ -518,3 +518,10 @@ INFO_RESULT = (
 ACHI_NO_GROUPS = "Hozircha hech qanaqa guruhda ishlamayapman, qiziq ekan."
 ACHI_GROUPS_HEADER = "📋 <b>Ishlab turgan guruhlar ({count} ta):</b>"
 ACHI_GROUPS_ITEM = "• {title}{premium}"
+
+
+CS2_MARKET_FALLBACK_NAME = (
+    "{requested}\n"
+    "⚠️ (bu buyum uchun narx topilmadi, o'rniga oddiy \"{resolved}\" narxi "
+    "ko'rsatilyapti - taxminiy)"
+)

@@ -67,10 +67,33 @@ def _load_index() -> tuple[list[str], dict[str, str], dict[str, str]]:
     return names, norm_map, compact_map
 
 
+def _rarity_rank(name: str) -> int:
+    """
+    "Souvenir" va "StatTrak" variantlari odatdagi (oddiy) skinlarga
+    solishtirganda ancha kamroq sotiladi va ko'pincha narx manbalarida
+    (Skinport/Steam) ma'lumot topilmaydi. Foydalanuvchi ".skin ak47
+    redline" kabi oddiy so'rov yozganda, aynan shu kamdan-kam
+    variantlarni birinchi o'ringa chiqarib, chalkashtirib qo'ymaslik
+    uchun - oddiy variantlarga eng kichik (ustunlik yuqori) reyting
+    beriladi.
+    """
+    lowered = name.lower()
+    if "souvenir" in lowered:
+        return 2
+    if "stattrak" in lowered or "stat trak" in lowered:
+        return 1
+    return 0
+
+
 def search(query: str, limit: int = 5) -> list[str]:
     """
     Berilgan so'rov bo'yicha eng mos keladigan buyum nomlarini (Steam
     market_hash_name shaklida) qaytaradi. Natija bo'lmasa bo'sh ro'yxat.
+
+    Natijalar avval "oddiy" (Souvenir/StatTrak bo'lmagan) variantlar,
+    keyin StatTrak, keyin Souvenir tartibida saralanadi - chunki
+    foydalanuvchi odatda oddiy variantni so'raydi, va kamdan-kam
+    variantlarda narx topilmaslik ehtimoli yuqori.
     """
     names, norm_map, compact_map = _load_index()
     if not names:
@@ -88,17 +111,23 @@ def search(query: str, limit: int = 5) -> list[str]:
     # 2) Normallashtirilgan matn ichida qidiruv (masalan "ak47 redline")
     substr_matches = [norm_map[k] for k in norm_map if nq in k]
     if substr_matches:
-        return _dedupe(substr_matches)[:limit]
+        return _rank_and_dedupe(substr_matches)[:limit]
 
     # 3) Compact qidiruv (masalan "ak47redline" - bo'sh joysiz)
     compact_matches = [compact_map[k] for k in compact_map if cq in k]
     if compact_matches:
-        return _dedupe(compact_matches)[:limit]
+        return _rank_and_dedupe(compact_matches)[:limit]
 
     # 4) Yaqin mos kelishlarni difflib bilan qidirish (xato yozilgan
     # so'zlar uchun, masalan "redlien" -> "redline")
     close = difflib.get_close_matches(nq, list(norm_map.keys()), n=limit, cutoff=0.5)
-    return [norm_map[c] for c in close]
+    return _rank_and_dedupe([norm_map[c] for c in close])[:limit]
+
+
+def _rank_and_dedupe(items: list[str]) -> list[str]:
+    deduped = _dedupe(items)
+    deduped.sort(key=_rarity_rank)
+    return deduped
 
 
 def _dedupe(items: list[str]) -> list[str]:

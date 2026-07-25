@@ -274,10 +274,11 @@ def _parse_usd(price_str: str | None) -> float | None:
         return None
 
 
-async def _fetch_price_with_fallback(
-    item_name: str,
-) -> tuple[float, int | None, str] | None:
-    """Avval Skinport, topilmasa Steam'dan narxni oladi."""
+_RARE_PREFIXES = ("Souvenir ", "StatTrak™ ")
+
+
+async def _fetch_price_for_name(item_name: str) -> tuple[float, int | None, str] | None:
+    """Avval Skinport, topilmasa Steam'dan narxni oladi (bitta nom uchun)."""
     skinport_result = await _fetch_from_skinport(item_name)
     if skinport_result is not None:
         price, count = skinport_result
@@ -291,31 +292,80 @@ async def _fetch_price_with_fallback(
     return None
 
 
+async def _fetch_price_with_fallback(
+    item_name: str,
+) -> tuple[float, int | None, str, str] | None:
+    """
+    Narxni topishga harakat qiladi. Agar bu "Souvenir" yoki "StatTrak™"
+    variant bo'lsa va narx topilmasa (bu variantlar kamdan-kam sotiladi,
+    ko'pincha narx manbalarida umuman yo'q), oddiy (asosiy) variantni
+    ham sinab ko'radi - shu bilan foydalanuvchi hech bo'lmasa taxminiy
+    narxni bilib oladi, "topilmadi" deb qolmaydi.
+
+    :return: (narx, hajm/soni, manba, haqiqatda topilgan nom) yoki None
+    """
+    result = await _fetch_price_for_name(item_name)
+    if result is not None:
+        price, count, source = result
+        return price, count, source, item_name
+
+    for prefix in _RARE_PREFIXES:
+        if item_name.startswith(prefix):
+            base_name = item_name[len(prefix):]
+            base_result = await _fetch_price_for_name(base_name)
+            if base_result is not None:
+                price, count, source = base_result
+                logger.info(
+                    "\"%s\" uchun narx topilmadi, oddiy variant \"%s\" narxi "
+                    "ko'rsatildi",
+                    item_name,
+                    base_name,
+                )
+                return price, count, source, base_name
+
+    return None
+
+
 async def _send_price_result(message: Message, item_name: str) -> None:
     result = await _fetch_price_with_fallback(item_name)
     if result is None:
         logger.warning(
-            "\"%s\" uchun narx TOPILMADI - LIS-SKINS ham, Steam ham javob "
+            "\"%s\" uchun narx TOPILMADI - Skinport ham, Steam ham javob "
             "bermadi. Sabablarini yuqoridagi WARNING loglarida ko'ring "
             "(masalan Steam 429/403 bergan bo'lishi mumkin - bulut IP "
-            "manzillari ko'pincha Steam tomonidan bloklanadi).",
+            "manzillari ko'pincha Steam tomonidan bloklanadi; yoki bu "
+            "kamdan-kam sotiladigan buyum bo'lib, narx manbalarida "
+            "umuman yo'q bo'lishi mumkin).",
             item_name,
         )
         await message.answer(texts.CS2_MARKET_NOT_FOUND)
         return
 
-    usd_price, volume, source = result
+    usd_price, volume, source, resolved_name = result
+    is_fallback_name = resolved_name != item_name
+
     uzs_price = usd_price * settings.usd_to_uzs_rate
     usd_str = f"{usd_price:.2f}"
     uzs_str = f"{uzs_price:,.0f}".replace(",", " ")
 
+    # Agar aynan so'ralgan (masalan Souvenir) variant narxi topilmay,
+    # oddiy variant narxi ko'rsatilayotgan bo'lsa, buni chiqarilgan
+    # nomning o'zida ko'rsatamiz - shu bilan foydalanuvchi bu taxminiy
+    # ekanini bilib oladi (aynan Souvenir/StatTrak narxi emas).
+    if is_fallback_name:
+        display_name = texts.CS2_MARKET_FALLBACK_NAME.format(
+            requested=item_name, resolved=resolved_name
+        )
+    else:
+        display_name = resolved_name
+
     if volume:
         text = texts.CS2_MARKET_RESULT_WITH_VOLUME.format(
-            name=item_name, usd=usd_str, uzs=uzs_str, volume=volume, source=source
+            name=display_name, usd=usd_str, uzs=uzs_str, volume=volume, source=source
         )
     else:
         text = texts.CS2_MARKET_RESULT.format(
-            name=item_name, usd=usd_str, uzs=uzs_str, source=source
+            name=display_name, usd=usd_str, uzs=uzs_str, source=source
         )
 
     await message.answer(text)

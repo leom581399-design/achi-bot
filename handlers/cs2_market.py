@@ -49,6 +49,15 @@ _REQUEST_HEADERS = {
     )
 }
 
+# MUHIM: Skinport'ning /v1/items endpointi "Accept-Encoding: br" (Brotli)
+# headerini MAJBURIY talab qiladi (https://docs.skinport.com/items) - shu
+# header bo'lmasa server so'rovni butunlay rad etadi (HTTP 406 Not
+# Acceptable qaytaradi), va bot "narx topilmadi" deb qo'yaveradi, garchi
+# buyum nomi cs2_items.py orqali TO'G'RI topilgan bo'lsa ham. Brotli
+# javobni avtomatik dekodlash uchun requirements.txt'ga `Brotli` paketi
+# ham qo'shildi (aiohttp shunda avtomatik br-dekodlash qila oladi).
+_SKINPORT_HEADERS = {**_REQUEST_HEADERS, "Accept-Encoding": "br"}
+
 # Har foydalanuvchi uchun oxirgi so'rov vaqti (spam va manbani haddan
 # tashqari ko'p so'rov bilan bloklatib qo'ymaslik uchun).
 _last_lookup: dict[tuple[int, int], float] = {}
@@ -132,7 +141,7 @@ async def _load_skinport_prices() -> dict[str, dict]:
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(
-                _SKINPORT_ITEMS_URL, params=params, headers=_REQUEST_HEADERS
+                _SKINPORT_ITEMS_URL, params=params, headers=_SKINPORT_HEADERS
             ) as resp:
                 if resp.status != 200:
                     logger.warning(

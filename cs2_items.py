@@ -27,9 +27,14 @@ import re
 from functools import lru_cache
 
 _DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_cs2_items.json.gz")
+_META_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_cs2_meta.json.gz")
 
 _STRIP_RE = re.compile(r"[^a-z0-9]+")
 _SPECIAL_CHARS_RE = re.compile(r"[★™]")
+_WEAR_SUFFIX_RE = re.compile(
+    r"\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$"
+)
+_VARIANT_PREFIX_RE = re.compile(r"^(★ )?(StatTrak™ |Souvenir )")
 
 
 def _normalize(text: str) -> str:
@@ -144,3 +149,44 @@ def is_available() -> bool:
     """Ma'lumotlar bazasi fayli mavjud va yuklanganligini tekshiradi."""
     names, _, _ = _load_index()
     return bool(names)
+
+
+# ------------------------------------------------------------------
+# Buyum metadatasi (rasm, qaysi keys/to'plamdan tushishi) -
+# ByMykel/CSGO-API ochiq loyihasidan olingan, base (Wear/StatTrak/
+# Souvenir'siz) nom bo'yicha kalitlangan (data_cs2_meta.json.gz).
+# ------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def _load_meta() -> dict[str, dict]:
+    if not os.path.exists(_META_PATH):
+        return {}
+    with gzip.open(_META_PATH, "rt", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def base_name(name: str) -> str:
+    """
+    To'liq nomdan (masalan "StatTrak™ AK-47 | Redline (Field-Tested)")
+    metadata bazasida kalit sifatida ishlatiladigan asosiy nomni
+    ("AK-47 | Redline") ajratib oladi - ya'ni Wear qavsini va
+    StatTrak/Souvenir prefiksini olib tashlaydi (★ prefiksi qoldiriladi,
+    chunki pichoq/qo'lqop nomlari metadata bazasida ham ★ bilan
+    saqlangan).
+    """
+    stripped = _WEAR_SUFFIX_RE.sub("", name)
+    stripped = _VARIANT_PREFIX_RE.sub(r"\1", stripped)
+    return stripped.strip()
+
+
+def get_meta(name: str) -> dict | None:
+    """
+    Berilgan (to'liq yoki asosiy) buyum nomi uchun metadata qaytaradi:
+    {"image": <url yoki None>, "source": <keys/to'plam nomi yoki None>,
+    "rarity": <nodirlik nomi yoki None>}. Topilmasa None.
+    """
+    meta = _load_meta()
+    if not meta:
+        return None
+    return meta.get(base_name(name)) or meta.get(name)

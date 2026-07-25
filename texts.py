@@ -460,14 +460,20 @@ CS2_MARKET_USAGE = (
     "nazarda tutganingizni topib olishga harakat qilaman-a."
 )
 CS2_MARKET_SEARCHING = "🔍 \"{name}\" qidirilyapti, biroz kuting..."
+CS2_MARKET_SEARCHING_RU = "🔍 Ищу \"{name}\", подождите немного..."
 CS2_MARKET_NOT_FOUND = (
     "Bunaqa buyum topolmadim-a. Boshqacha yozib ko'ring, masalan faqat "
     "qurol nomi va skin nomini yozing: .skin ak47 redline"
+)
+CS2_MARKET_NOT_FOUND_RU = (
+    "Не смог найти такой предмет. Попробуйте написать по-другому, "
+    "например только название оружия и скина: .skin ak47 redline"
 )
 CS2_MARKET_RESULT = (
     "🔫 <b>{name}</b>\n\n"
     "💵 Narxi: <b>${usd}</b>\n"
     "💰 So'mda: <b>{uzs} so'm</b>\n"
+    "{drop_line}"
     "🌐 Manba: {source}\n"
 )
 CS2_MARKET_RESULT_WITH_VOLUME = (
@@ -475,11 +481,31 @@ CS2_MARKET_RESULT_WITH_VOLUME = (
     "💵 Narxi: <b>${usd}</b>\n"
     "💰 So'mda: <b>{uzs} so'm</b>\n"
     "📦 So'nggi 24 soatda sotilgan: {volume} ta\n"
+    "{drop_line}"
     "🌐 Manba: {source}\n"
 )
+CS2_MARKET_RESULT_RU = (
+    "🔫 <b>{name}</b>\n\n"
+    "💵 Цена: <b>${usd}</b>\n"
+    "💰 В сумах: <b>{uzs} so'm</b>\n"
+    "{drop_line}"
+    "🌐 Источник: {source}\n"
+)
+CS2_MARKET_RESULT_WITH_VOLUME_RU = (
+    "🔫 <b>{name}</b>\n\n"
+    "💵 Цена: <b>${usd}</b>\n"
+    "💰 В сумах: <b>{uzs} so'm</b>\n"
+    "📦 Продано за последние 24 часа: {volume} шт\n"
+    "{drop_line}"
+    "🌐 Источник: {source}\n"
+)
+CS2_MARKET_DROP_LINE = "📦 Qayerdan tushadi: {drop_source}\n"
+CS2_MARKET_DROP_LINE_RU = "📦 Выпадает из: {drop_source}\n"
 CS2_MARKET_SOURCE_LISSKINS = "LIS-SKINS.COM"
 CS2_MARKET_SOURCE_SKINPORT = "SKINPORT.COM (zaxira manba)"
+CS2_MARKET_SOURCE_SKINPORT_RU = "SKINPORT.COM (резервный источник)"
 CS2_MARKET_SOURCE_STEAM = "Steam Community Market (zaxira manba)"
+CS2_MARKET_SOURCE_STEAM_RU = "Steam Community Market (резервный источник)"
 CS2_MARKET_ERROR = (
     "Narx manbalari hozir javob bermayapti, birozdan keyin qayta urinib ko'ring-a."
 )
@@ -556,6 +582,11 @@ CS2_MARKET_FALLBACK_NAME = (
     "{requested}\n"
     "⚠️ (bu buyum uchun narx topilmadi, o'rniga oddiy \"{resolved}\" narxi "
     "ko'rsatilyapti - taxminiy)"
+)
+CS2_MARKET_FALLBACK_NAME_RU = (
+    "{requested}\n"
+    "⚠️ (цена для этого предмета не найдена, вместо неё показана цена "
+    "обычной версии \"{resolved}\" - примерная)"
 )
 
 

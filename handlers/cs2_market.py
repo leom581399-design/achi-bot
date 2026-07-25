@@ -35,6 +35,33 @@ import cs2_items
 import texts
 from config import settings
 
+_CYRILLIC_RE = re.compile(r"[а-яА-ЯёЁ]")
+
+
+def _detect_lang(text_value: str) -> str:
+    """
+    Juda oddiy til aniqlash: foydalanuvchi yozgan so'rovda kirill
+    harflari uchrasa - rus tili deb, aks holda (lotin, ya'ni o'zbek)
+    standart o'zbek tili deb hisoblanadi. Buyum nomlarining o'zi
+    (masalan "AK-47 | Redline") baribir ingliz tilida qoladi - faqat
+    atrofidagi matn shu tilga moslanadi.
+    """
+    return "ru" if _CYRILLIC_RE.search(text_value) else "uz"
+
+
+_SOURCE_LABELS = {
+    "uz": {
+        "lisskins": texts.CS2_MARKET_SOURCE_LISSKINS,
+        "skinport": texts.CS2_MARKET_SOURCE_SKINPORT,
+        "steam": texts.CS2_MARKET_SOURCE_STEAM,
+    },
+    "ru": {
+        "lisskins": texts.CS2_MARKET_SOURCE_LISSKINS,
+        "skinport": texts.CS2_MARKET_SOURCE_SKINPORT_RU,
+        "steam": texts.CS2_MARKET_SOURCE_STEAM_RU,
+    },
+}
+
 _LISSKINS_SEARCH_URL = "https://api.lis-skins.com/v1/market/search"
 
 router = Router(name="cs2_market")
@@ -72,7 +99,7 @@ _skinport_prices: dict[str, dict] = {}
 # Bir nechta mos natija chiqganda, foydalanuvchi tugma bosganda qaysi
 # nomni tanlaganini bilish uchun (callback_data qisqa bo'lishi kerak,
 # shu sabab to'liq nomni emas, indeksni saqlaymiz).
-_pending_choices: dict[str, list[str]] = {}
+_pending_choices: dict[str, tuple[str, list[str]]] = {}
 _PENDING_CHOICE_TTL_SEC = 5 * 60
 
 
@@ -390,21 +417,23 @@ _RARE_PREFIXES = ("Souvenir ", "StatTrak™ ")
 
 async def _fetch_price_for_name(item_name: str) -> tuple[float, int | None, str] | None:
     """Avval LIS-SKINS, topilmasa Skinport, u ham topilmasa Steam'dan
-    narxni oladi (bitta nom uchun)."""
+    narxni oladi (bitta nom uchun). Uchinchi qiymat - manba ID'si
+    ("lisskins"/"skinport"/"steam"), matn EMAS (matn keyinroq, javob
+    tilini aniqlagandan so'ng tanlanadi)."""
     lisskins_result = await _fetch_from_lisskins(item_name)
     if lisskins_result is not None:
         price, count = lisskins_result
-        return price, count, texts.CS2_MARKET_SOURCE_LISSKINS
+        return price, count, "lisskins"
 
     skinport_result = await _fetch_from_skinport(item_name)
     if skinport_result is not None:
         price, count = skinport_result
-        return price, count, texts.CS2_MARKET_SOURCE_SKINPORT
+        return price, count, "skinport"
 
     steam_result = await _fetch_from_steam(item_name)
     if steam_result is not None:
         price, volume = steam_result
-        return price, volume, texts.CS2_MARKET_SOURCE_STEAM
+        return price, volume, "steam"
 
     return None
 
@@ -443,7 +472,11 @@ async def _fetch_price_with_fallback(
     return None
 
 
-async def _send_price_result(message: Message, item_name: str) -> None:
+async def _send_price_result(
+    message: Message, item_name: str, raw_query: str | None = None
+) -> None:
+    lang = _detect_lang(raw_query if raw_query is not None else item_name)
+
     result = await _fetch_price_with_fallback(item_name)
     if result is None:
         logger.warning(
@@ -455,35 +488,71 @@ async def _send_price_result(message: Message, item_name: str) -> None:
             "umuman yo'q bo'lishi mumkin).",
             item_name,
         )
-        await message.answer(texts.CS2_MARKET_NOT_FOUND)
+        not_found = (
+            texts.CS2_MARKET_NOT_FOUND_RU if lang == "ru" else texts.CS2_MARKET_NOT_FOUND
+        )
+        await message.answer(not_found)
         return
 
-    usd_price, volume, source, resolved_name = result
+    usd_price, volume, source_id, resolved_name = result
     is_fallback_name = resolved_name != item_name
 
     uzs_price = usd_price * settings.usd_to_uzs_rate
     usd_str = f"{usd_price:.2f}"
     uzs_str = f"{uzs_price:,.0f}".replace(",", " ")
+    source = _SOURCE_LABELS[lang][source_id]
 
     # Agar aynan so'ralgan (masalan Souvenir) variant narxi topilmay,
     # oddiy variant narxi ko'rsatilayotgan bo'lsa, buni chiqarilgan
     # nomning o'zida ko'rsatamiz - shu bilan foydalanuvchi bu taxminiy
     # ekanini bilib oladi (aynan Souvenir/StatTrak narxi emas).
     if is_fallback_name:
-        display_name = texts.CS2_MARKET_FALLBACK_NAME.format(
-            requested=item_name, resolved=resolved_name
+        fallback_tpl = (
+            texts.CS2_MARKET_FALLBACK_NAME_RU if lang == "ru" else texts.CS2_MARKET_FALLBACK_NAME
         )
+        display_name = fallback_tpl.format(requested=item_name, resolved=resolved_name)
     else:
         display_name = resolved_name
 
+    # Buyum rasmi va qaysi keys/to'plamdan tushishi (mavjud bo'lsa)
+    meta = cs2_items.get_meta(resolved_name)
+    drop_line = ""
+    if meta and meta.get("source"):
+        drop_tpl = texts.CS2_MARKET_DROP_LINE_RU if lang == "ru" else texts.CS2_MARKET_DROP_LINE
+        drop_line = drop_tpl.format(drop_source=meta["source"])
+
+    result_tpl_map = {
+        ("uz", True): texts.CS2_MARKET_RESULT_WITH_VOLUME,
+        ("uz", False): texts.CS2_MARKET_RESULT,
+        ("ru", True): texts.CS2_MARKET_RESULT_WITH_VOLUME_RU,
+        ("ru", False): texts.CS2_MARKET_RESULT_RU,
+    }
+    template = result_tpl_map[(lang, bool(volume))]
     if volume:
-        text = texts.CS2_MARKET_RESULT_WITH_VOLUME.format(
-            name=display_name, usd=usd_str, uzs=uzs_str, volume=volume, source=source
+        text = template.format(
+            name=display_name,
+            usd=usd_str,
+            uzs=uzs_str,
+            volume=volume,
+            source=source,
+            drop_line=drop_line,
         )
     else:
-        text = texts.CS2_MARKET_RESULT.format(
-            name=display_name, usd=usd_str, uzs=uzs_str, source=source
+        text = template.format(
+            name=display_name, usd=usd_str, uzs=uzs_str, source=source, drop_line=drop_line
         )
+
+    image_url = meta.get("image") if meta else None
+    if image_url:
+        try:
+            await message.answer_photo(photo=image_url, caption=text)
+            return
+        except Exception as exc:
+            logger.warning(
+                "\"%s\" uchun rasm yuborib bo'lmadi (%r), matn sifatida yuborilyapti",
+                resolved_name,
+                exc,
+            )
 
     await message.answer(text)
 
@@ -540,7 +609,7 @@ async def on_skin_lookup(message: Message) -> None:
             texts.CS2_MARKET_SEARCHING.format(name=query)
         )
         try:
-            await _send_price_result(searching_msg, query)
+            await _send_price_result(searching_msg, query, raw_query=query)
             await searching_msg.delete()
         except Exception:
             pass
@@ -551,7 +620,7 @@ async def on_skin_lookup(message: Message) -> None:
             texts.CS2_MARKET_SEARCHING.format(name=matches[0])
         )
         try:
-            await _send_price_result(searching_msg, matches[0])
+            await _send_price_result(searching_msg, matches[0], raw_query=query)
             await searching_msg.delete()
         except Exception:
             pass
@@ -560,7 +629,7 @@ async def on_skin_lookup(message: Message) -> None:
     # Bir nechta mos nom topilsa - tanlash tugmalari
     _cleanup_pending_choices(now)
     choice_key = f"{message.chat.id}:{message.from_user.id}:{int(now)}"
-    _pending_choices[choice_key] = matches
+    _pending_choices[choice_key] = (query, matches)
 
     buttons = [
         [InlineKeyboardButton(text=name, callback_data=f"cs2pick:{choice_key}:{i}")]
@@ -598,11 +667,12 @@ async def on_cs2_pick(callback: CallbackQuery) -> None:
         await callback.answer()
         return
 
-    matches = _pending_choices.get(choice_key)
-    if not matches or index >= len(matches):
+    pending = _pending_choices.get(choice_key)
+    if not pending or index >= len(pending[1]):
         await callback.answer(texts.CS2_MULTI_RESULTS_EXPIRED, show_alert=True)
         return
 
+    raw_query, matches = pending
     item_name = matches[index]
     # Eslatma: ro'yxatni bu yerda pop qilmaymiz - chunki guruh xabari
     # bo'lgani uchun, boshqa odam ham (yoki shu odam) boshqa tugmani
@@ -618,4 +688,4 @@ async def on_cs2_pick(callback: CallbackQuery) -> None:
     except Exception:
         pass
 
-    await _send_price_result(callback.message, item_name)
+    await _send_price_result(callback.message, item_name, raw_query=raw_query)

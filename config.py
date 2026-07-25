@@ -1,14 +1,15 @@
 """
 ACHI BOT - konfiguratsiya modul.
 
-Sozlamalar .env faylidan o'qiladi (agar mavjud bo'lsa). BOT_TOKEN uchun
-foydalanuvchining aniq so'roviga ko'ra, kodda standart (fallback) qiymat
-sifatida haqiqiy token qo'yilgan - shu sabab .env yaratmasangiz ham,
-Railway'da alohida environment variable sozlamasangiz ham bot ishlайdi.
+Sozlamalar .env faylidan (yoki Railway/Fly "Variables"dan) o'qiladi.
 
-Xohlasangiz, .env faylida yoki Railway "Variables" bo'limida BOT_TOKEN
-qiymatini qo'yib, shu standart qiymatni istagan vaqtda ustidan yozishingiz
-mumkin (masalan tokenni almashtirishga to'g'ri kelsa).
+MUHIM: BOT_TOKEN va shunga o'xshash MAXFIY qiymatlar hech qachon shu
+faylga to'g'ridan-to'g'ri yozilmaydi - faqat environment variable orqali
+beriladi. Aks holda token kod bilan birga ochiq GitHub repoga tushib
+qoladi va uni har kim ko'rib, botni to'liq boshqarib olishi mumkin
+(bu holat avval yuz bergan va tuzatilgan edi - qayta takrorlanmasin).
+BOT_TOKEN sozlanmagan bo'lsa, bot main.py'da aniq xato bilan to'xtaydi
+(pastga qarang - jim ishlab, keyin tushunarsiz xato berish o'rniga).
 """
 from __future__ import annotations
 
@@ -19,10 +20,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Foydalanuvchi so'roviga ko'ra to'g'ridan-to'g'ri kodga joylashtirilgan
-# standart bot tokeni (BotFather orqali olingan). .env/Railway Variables
-# orqali BOT_TOKEN o'zgaruvchisi berilsa, o'sha ustunlik qiladi.
-_DEFAULT_BOT_TOKEN = "8790777860:AAFt0Jv3x-01y6h7Z2rVKKDuHSOQ2mQy-UY"
+# Bot egasi (super-admin) uchun standart zaxira ID - agar Railway/Fly
+# "Variables"da SUPER_ADMINS umuman sozlanmagan bo'lsa ishlatiladi.
+# Bu MAXFIY qiymat EMAS (shunchaki Telegram user ID, token/parol emas),
+# shu sabab kodda turishi xavfsiz - lekin SUPER_ADMINS environment
+# variable sozlansa, u har doim ustunlik qiladi (pastdagi _parse_int_list
+# chaqiruviga qarang).
+_DEFAULT_SUPER_ADMINS = "8539436212"
 
 
 def _parse_int_list(raw: str | None) -> list[int]:
@@ -42,10 +46,12 @@ def _parse_int_list(raw: str | None) -> list[int]:
 @dataclass(frozen=True)
 class Settings:
     bot_token: str = field(
-        default_factory=lambda: os.getenv("BOT_TOKEN", "").strip() or _DEFAULT_BOT_TOKEN
+        default_factory=lambda: os.getenv("BOT_TOKEN", "").strip()
     )
     super_admins: list[int] = field(
-        default_factory=lambda: _parse_int_list(os.getenv("SUPER_ADMINS"))
+        default_factory=lambda: _parse_int_list(
+            os.getenv("SUPER_ADMINS") or _DEFAULT_SUPER_ADMINS
+        )
     )
     report_chat_id: int | None = field(
         default_factory=lambda: (

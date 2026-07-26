@@ -11,15 +11,19 @@
 FROM php:8.2-cli
 
 # Kerakli PHP extensionlar:
-# - pdo_pgsql / pdo_sqlite — ma'lumotlar bazasi uchun (Railway'da
+# - pdo_pgsql / pdo_sqlite — ma'lumotlar bazasi uchun (Railway/Render'da
 #   DATABASE_URL orqali Postgres ishlatish tavsiya etiladi, chunki
-#   fayl tizimi Railway'da doimiy emas - SQLite qayta deploy
-#   qilinganda yo'qoladi)
+#   fayl tizimi bu platformalarda doimiy emas - SQLite qayta deploy
+#   qilinganda yo'qoladi). `pdo_sqlite`ni QURISH uchun `libsqlite3-dev`
+#   (sqlite3.pc fayli shu paketda) VA `pkg-config` MAJBURIY - bular
+#   bo'lmasa "Package 'sqlite3' not found" xatosi bilan build yiqiladi.
 # - curl — TelegramClient Telegram Bot API bilan cURL orqali
 #   gaplashadi (standart php:8.2-cli image'da bu YO'Q, o'rnatish
 #   MAJBURIY, aks holda bot ishlamaydi)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        pkg-config \
         libpq-dev \
+        libsqlite3-dev \
         libcurl4-openssl-dev \
         unzip \
         git \

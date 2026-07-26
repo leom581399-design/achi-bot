@@ -46,6 +46,10 @@ RESERVED_COMMAND_NAMES = frozenset(
         "vip", "unvip", "viplist", "addmod", "removemod", "modlist",
         "schedule", "schedulelist", "unschedule", "allowlink", "unallowlink",
         "allowlinks", "dailyreport", "backup",
+        # GroupHelpBot'dan ilhomlanib qo'shilgan yangi buyruqlar:
+        "resetwarn", "banme", "kickme", "sban", "muteall",
+        "approval", "approve", "deny",
+        "top", "setfloodmode", "restore",
     }
 )
 

@@ -517,6 +517,158 @@ async def cmd_warns(message: Message, command: CommandObject, bot: Bot) -> None:
     await message.reply("\n".join(lines))
 
 
+@router.message(Command("resetwarn"))
+async def cmd_resetwarn(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    /unwarn'dan farqli o'laroq (u faqat OXIRGI ogohlantirishni olib
+    tashlaydi), /resetwarn odamning BARCHA ogohlantirishlarini bir
+    zumda tozalaydi - masalan admin "yaxshi, hammasini kechirdim,
+    yangidan boshlaymiz" demoqchi bo'lganda qulay.
+    """
+    if not await _guard(message, bot):
+        return
+    target, _ = await resolve_target(message, bot, command.args)
+    if not target:
+        await message.reply(texts.REPLY_NEEDED)
+        return
+    mention = mention_html(target.id, target.full_name)
+    count_before = await db.count_warns(message.chat.id, target.id)
+    if count_before == 0:
+        await message.reply(texts.RESETWARN_NONE.format(target=mention))
+        return
+    await db.clear_warns(message.chat.id, target.id)
+    await db.log_action(
+        chat_id=message.chat.id,
+        chat_title=message.chat.title,
+        action="unwarn",
+        target_id=target.id,
+        target_name=target.full_name,
+        target_username=target.username,
+        admin_id=message.from_user.id,
+        admin_name=user_display_name(message.from_user),
+        reason=f"{count_before} ta ogohlantirish birdaniga tozalandi",
+    )
+    await message.reply(texts.RESETWARN_DONE.format(target=mention, count=count_before))
+
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib qo'shilgan: /banme, /kickme, /sban, /muteall
+# ------------------------------------------------------------------
+
+
+@router.message(Command("banme"))
+async def cmd_banme(message: Message, bot: Bot) -> None:
+    """O'zini o'zi guruhdan banlaydi - biror kishi "meni chiqarib
+    tashlang" demoqchi bo'lsa, admin kutmasdan shuni yozadi."""
+    if message.chat.type not in ("group", "supergroup") or not message.from_user:
+        await message.reply(texts.ONLY_IN_GROUP)
+        return
+    user = message.from_user
+    if await is_chat_admin(bot, message.chat.id, user.id):
+        await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+    mention = mention_html(user.id, user.full_name)
+    try:
+        await message.reply(texts.BANME_BYE.format(mention=mention))
+        await bot.ban_chat_member(message.chat.id, user.id)
+    except TelegramAPIError:
+        await message.answer(texts.BOT_NOT_ADMIN)
+        return
+    await db.log_action(
+        chat_id=message.chat.id,
+        chat_title=message.chat.title,
+        action="ban",
+        target_id=user.id,
+        target_name=user.full_name,
+        target_username=user.username,
+        admin_id=user.id,
+        admin_name=user_display_name(user),
+        reason="O'z-o'zini chiqarib yubordi (/banme)",
+    )
+
+
+@router.message(Command("kickme"))
+async def cmd_kickme(message: Message, bot: Bot) -> None:
+    """O'zini o'zi guruhdan chiqaradi (ban emas - qaytib kirishi mumkin)."""
+    if message.chat.type not in ("group", "supergroup") or not message.from_user:
+        await message.reply(texts.ONLY_IN_GROUP)
+        return
+    user = message.from_user
+    if await is_chat_admin(bot, message.chat.id, user.id):
+        await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+    mention = mention_html(user.id, user.full_name)
+    try:
+        await message.reply(texts.KICKME_BYE.format(mention=mention))
+        await bot.ban_chat_member(message.chat.id, user.id)
+        await bot.unban_chat_member(message.chat.id, user.id, only_if_banned=True)
+    except TelegramAPIError:
+        return
+
+
+@router.message(Command("sban"))
+async def cmd_sban(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    "Sokin (silent) ban" - GroupHelpBot'dagi kabi: hech qanday
+    bildirishnoma yubormaydi, buyruq xabarini ham o'chiradi - guruhda
+    hech kim "kim banlandi, nima uchun" deb bilmaydi (masalan aniq
+    spam-botlarni ovoz chiqarmasdan tozalash uchun qulay).
+    """
+    if not await _guard_full_admin_only(message, bot):
+        return
+    target, remaining_text = await resolve_target(message, bot, command.args)
+    if not target:
+        await message.reply(texts.REPLY_NEEDED)
+        return
+    if await is_target_admin(bot, message.chat.id, target.id):
+        await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    try:
+        await bot.ban_chat_member(message.chat.id, target.id)
+    except TelegramAPIError:
+        return
+
+    await db.log_action(
+        chat_id=message.chat.id,
+        chat_title=message.chat.title,
+        action="ban",
+        target_id=target.id,
+        target_name=target.full_name,
+        target_username=target.username,
+        admin_id=message.from_user.id,
+        admin_name=user_display_name(message.from_user),
+        reason=(remaining_text or "Sokin ban (/sban)"),
+    )
+
+
+@router.message(Command("muteall"))
+async def cmd_muteall(message: Message, command: CommandObject, bot: Bot) -> None:
+    """
+    Butun guruhni bir zumda ovozsiz qiladi (guruhning "standart"
+    xabar-yozish huquqini o'zgartiradi) - masalan diqqatni jamlash
+    kerak bo'lgan e'lon paytida yoki tinchlik buzilganda tezkor
+    yordam sifatida. /muteall off - qaytarish.
+    """
+    if not await _guard_full_admin_only(message, bot):
+        return
+    arg = (command.args or "").strip().lower()
+    unmute = arg in ("off", "false", "0")
+
+    permissions = _UNMUTED_PERMISSIONS if unmute else _MUTED_PERMISSIONS
+    try:
+        await bot.set_chat_permissions(message.chat.id, permissions=permissions)
+    except TelegramAPIError:
+        await message.reply(texts.BOT_NOT_ADMIN)
+        return
+    await message.reply(texts.MUTEALL_OFF if unmute else texts.MUTEALL_ON)
+
+
 # ------------------------------------------------------------------
 # Lock / Unlock
 # ------------------------------------------------------------------

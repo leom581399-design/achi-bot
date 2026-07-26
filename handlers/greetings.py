@@ -20,7 +20,7 @@ from aiogram.types import (
 
 import texts
 from database import db
-from utils import is_chat_admin, mention_html
+from utils import is_chat_admin, mention_html, resolve_target
 
 router = Router(name="greetings")
 
@@ -149,6 +149,79 @@ async def cmd_autoapprove(message: Message, command: CommandObject, bot: Bot) ->
 
 
 # ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /approval - qo'lda tasdiqlash rejimi
+# ------------------------------------------------------------------
+#
+# Captcha'dan farqi: captcha'da odam TUGMA bosadi (o'zi harakat qiladi).
+# Approval'da esa odam yozolmay turadi, ADMIN o'zi /approve yoki /deny
+# deb hal qiladi - masalan qo'lda tekshirib ko'rish kerak bo'lgan
+# guruhlar uchun (masalan yopiq/eksklyuziv jamoalar).
+
+
+@router.message(Command("approval"))
+async def cmd_approval(message: Message, command: CommandObject, bot: Bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    arg = (command.args or "").strip().lower()
+    if arg == "":
+        row = await db.get_chat_settings(message.chat.id)
+        enabled = bool(row and row["approval_enabled"])
+        await message.reply(texts.APPROVAL_STATUS_ON if enabled else texts.APPROVAL_STATUS_OFF)
+        return
+    if arg not in ("on", "off"):
+        await message.reply(texts.APPROVAL_USAGE)
+        return
+    await db.ensure_chat(message.chat.id, message.chat.title)
+    await db.update_chat_setting(message.chat.id, approval_enabled=1 if arg == "on" else 0)
+    await message.reply(texts.APPROVAL_ON if arg == "on" else texts.APPROVAL_OFF)
+
+
+@router.message(Command("approve"))
+async def cmd_approve(message: Message, command: CommandObject, bot: Bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    target, _ = await resolve_target(message, bot, command.args)
+    if not target:
+        await message.reply(texts.APPROVAL_NO_TARGET)
+        return
+    if await is_chat_admin(bot, message.chat.id, target.id):
+        await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+
+    await db.pop_pending_approval(message.chat.id, target.id)
+    try:
+        await bot.restrict_chat_member(
+            message.chat.id, target.id, permissions=_FULL_PERMISSIONS
+        )
+    except Exception:
+        pass
+    mention = mention_html(target.id, target.full_name)
+    await message.reply(texts.APPROVAL_APPROVED.format(mention=mention))
+
+
+@router.message(Command("deny"))
+async def cmd_deny(message: Message, command: CommandObject, bot: Bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    target, _ = await resolve_target(message, bot, command.args)
+    if not target:
+        await message.reply(texts.APPROVAL_NO_TARGET)
+        return
+    if await is_chat_admin(bot, message.chat.id, target.id):
+        await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+
+    await db.pop_pending_approval(message.chat.id, target.id)
+    mention = mention_html(target.id, target.full_name)
+    try:
+        await bot.ban_chat_member(message.chat.id, target.id)
+        await bot.unban_chat_member(message.chat.id, target.id, only_if_banned=True)
+    except Exception:
+        pass
+    await message.reply(texts.APPROVAL_DENIED.format(mention=mention))
+
+
+# ------------------------------------------------------------------
 # Yangi a'zo qo'shilishi / chiqishi
 # ------------------------------------------------------------------
 
@@ -159,6 +232,7 @@ async def on_new_members(message: Message, bot: Bot) -> None:
     settings_row = await db.get_chat_settings(message.chat.id)
     clean_service = bool(settings_row["clean_service"]) if settings_row else False
     captcha_enabled = bool(settings_row["captcha_enabled"]) if settings_row else False
+    approval_enabled = bool(settings_row["approval_enabled"]) if settings_row else False
     welcome_text = (
         settings_row["welcome_text"] if settings_row and settings_row["welcome_text"] else None
     )
@@ -212,6 +286,18 @@ async def on_new_members(message: Message, bot: Bot) -> None:
                 prompt_message_id=prompt.message_id,
                 expires_at=time.time() + _CAPTCHA_TIMEOUT_SEC,
             )
+        elif approval_enabled:
+            # GroupHelpBot'dan ilhomlanib: captcha'dan farqli, bu yerda
+            # odam tugma bosmaydi - admin o'zi /approve yoki /deny deb
+            # hal qiladi. Odam shu orada yozolmaydi (restrict qilingan).
+            try:
+                await bot.restrict_chat_member(
+                    message.chat.id, member.id, permissions=_RESTRICTED_PERMISSIONS
+                )
+            except Exception:
+                pass
+            await db.add_pending_approval(message.chat.id, member.id, join_message_id)
+            await message.answer(texts.APPROVAL_PENDING.format(mention=mention))
         else:
             text = welcome_text.format(mention=mention) if welcome_text else texts.DEFAULT_WELCOME.format(mention=mention)
             welcome_msg = await message.answer(text)

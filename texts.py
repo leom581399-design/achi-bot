@@ -34,7 +34,18 @@ HELP = (
     "/kick - guruhdan chiqarib yuborish (ban emas)\n"
     "/warn [sabab] - ogohlantirish berish\n"
     "/unwarn - oxirgi ogohlantirishni bekor qilish\n"
-    "/warns - odamning nechta ogohlantirishi borligini ko'rish\n\n"
+    "/resetwarn - odamning BARCHA ogohlantirishini birdaniga tozalash\n"
+    "/warns - odamning nechta ogohlantirishi borligini ko'rish\n"
+    "/banme, /kickme - o'zingizni o'zingiz chiqarib yuborish\n"
+    "/sban - sokin (bildirishnomasiz) ban\n"
+    "/muteall [off] - butun guruhni vaqtincha ovozsiz qilish\n"
+    "/setfloodmode warn/mute/kick/ban/tban/tmute - flood limitiga "
+    "yetganda qaysi amal bajarilishini tanlash\n\n"
+    "<b>Qo'lda tasdiqlash (yangi a'zolar):</b>\n"
+    "/approval on/off - qo'lda tasdiqlash rejimini yoqish/o'chirish\n"
+    "/approve, /deny - kutayotgan a'zoni tasdiqlash/rad etish\n\n"
+    "<b>Statistika:</b>\n"
+    "/top - guruhdagi eng faol (ko'p yozgan) a'zolar reytingi\n\n"
     "<b>Qulflar:</b>\n"
     "/lock link|photo|video|sticker|forward|all\n"
     "/unlock link|photo|video|sticker|forward|all\n"
@@ -68,7 +79,10 @@ HELP = (
     "/report - hozirgina PDF hisobot tayyorlab beradi\n\n"
     "<b>Premium (Telegram Stars):</b>\n"
     "/premium - narxlar va joriy holatni ko'rish, xarid qilish\n"
-    "/exportcsv - hisobotni CSV (Excel) ko'rinishida olish\n\n"
+    "/exportcsv - hisobotni CSV (Excel) ko'rinishida olish\n"
+    "/backup - guruh sozlamalarining JSON zaxira nusxasini olish\n"
+    "/restore - zaxira JSON faylidan sozlamalarni qayta tiklash "
+    "(faylga reply qilib yozing)\n\n"
     "<b>Federatsiya (premium):</b>\n"
     "/fnew nom - federatsiya yaratish\n"
     "/fjoin fed_id - guruhni federatsiyaga qo'shish\n"
@@ -155,10 +169,40 @@ WARN_LIMIT_REACHED = (
     "banladim. Boshqacha bo'lmaydi, qoidaga rioya qilish kerak edi-a."
 )
 UNWARN_DONE = "Bir ogohlantirish qaytarib olindi, {target}da endi {count} ta qoldi."
+RESETWARN_DONE = "{target}ning barcha ogohlantirishlari ({count} ta) tozalandi, yangidan boshlaydi."
+RESETWARN_NONE = "{target}da tozalash uchun ogohlantirish yo'q ekan."
 NO_WARNS = "{target}da hech qanaqa ogohlantirish yo'q ekan."
 WARNS_LIST_EMPTY = "{target}da ogohlantirish yo'q, toza ekan."
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /banme, /kickme, /sban, /muteall
+# ------------------------------------------------------------------
+
+BANME_BYE = "Xayr, {mention}! O'zingiz chiqib ketishni so'radingiz, xayrli tomon-a."
+KICKME_BYE = "Xayr, {mention}! Xohlasangiz qaytib kirib kelasiz."
+MUTEALL_ON = "Butun guruh vaqtincha ovozsiz qilindi (faqat adminlar yoza oladi). Qaytarish uchun: /muteall off"
+MUTEALL_OFF = "Guruh yozish huquqi qaytarildi, hammaga gap bor endi."
 WARNS_LIST_HEADER = "{target}ning ogohlantirishlari ({count}/{max_warns}):"
 WARNS_LIST_ITEM = "{num}. {reason} — {admin} ({date})"
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /top - eng faol a'zolar reytingi
+# ------------------------------------------------------------------
+
+TOP_HEADER = "<b>Eng faol a'zolar:</b>"
+TOP_ITEM = "{pos} {name} — {count} ta xabar"
+TOP_EMPTY = "Hozircha hech kim yozmagan ekan, statistika yig'ilmagan."
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /setfloodmode - flood limitiga
+# yetganda qaysi amal bajarilishi
+# ------------------------------------------------------------------
+
+SETFLOODMODE_USAGE = (
+    "Shunday yozing: /setfloodmode warn/mute/kick/ban/tban/tmute\n"
+    "Masalan: /setfloodmode mute (standart shu)"
+)
+SETFLOODMODE_SET = "Flood limitiga yetganda endi \"{action}\" qilinadi."
 
 # ------------------------------------------------------------------
 # Lock / unlock
@@ -255,6 +299,20 @@ FLOOD_MUTED = (
 )
 
 # ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /setfloodmode orqali tanlanadigan
+# boshqa flood amallari uchun xabarlar (standart amal - yuqoridagi
+# FLOOD_MUTED, "mute")
+# ------------------------------------------------------------------
+
+FLOOD_MUTED_PERMANENT = (
+    "{mention} flood qilgani uchun mute qilindi (cheklanmagan muddatga). "
+    "Admin /unmute bilan qaytarishi mumkin."
+)
+FLOOD_KICKED = "{mention} flood qilgani uchun guruhdan chiqarib yuborildi (qaytib kirishi mumkin)."
+FLOOD_BANNED = "{mention} flood qilgani uchun banlandi."
+FLOOD_TBANNED = "{mention} flood qilgani uchun {duration}ga banlandi."
+
+# ------------------------------------------------------------------
 # Welcome / goodbye / captcha / join
 # ------------------------------------------------------------------
 
@@ -287,6 +345,29 @@ CLEAN_SERVICE_OFF = "Tizim xabarlari endi o'chirilmaydi."
 JOIN_REQUEST_ACCEPTED_LOG = (
     "{mention} guruhga qo'shilish so'rovi avtomatik qabul qilindi."
 )
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /approval, /approve, /deny
+# ------------------------------------------------------------------
+
+APPROVAL_USAGE = "Shunday yozing: /approval on yoki /approval off"
+APPROVAL_ON = (
+    "Qo'lda tasdiqlash rejimi yoqildi. Endi yangi qo'shilganlar admin "
+    "/approve deb tasdiqlamaguncha yozolmaydi."
+)
+APPROVAL_OFF = "Qo'lda tasdiqlash rejimi o'chirildi."
+APPROVAL_STATUS_ON = "Qo'lda tasdiqlash rejimi hozir yoqilgan."
+APPROVAL_STATUS_OFF = "Qo'lda tasdiqlash rejimi hozir o'chirilgan."
+APPROVAL_PENDING = (
+    "{mention}, xush kelibsiz! Admin tasdiqlagunicha biroz kuting-a, "
+    "hozircha yozolmaysiz."
+)
+APPROVAL_NO_TARGET = (
+    "Kimni tasdiqlash/rad etishni ko'rsating: xabariga reply qiling "
+    "yoki @username/ID yozing."
+)
+APPROVAL_APPROVED = "{mention} tasdiqlandi, endi guruhda erkin yozishi mumkin."
+APPROVAL_DENIED = "{mention} rad etildi va guruhdan chiqarib yuborildi."
 
 # ------------------------------------------------------------------
 # Filter / notes / rules
@@ -1062,6 +1143,27 @@ DAILYREPORT_REQUIRES_PREMIUM = "Kunlik avtomatik hisobot - premium funksiya."
 BACKUP_GENERATING = "Zaxira nusxa tayyorlanyapti..."
 BACKUP_CAPTION = "Guruh sozlamalari zaxira nusxasi (JSON)."
 BACKUP_REQUIRES_PREMIUM = "Zaxira nusxa olish - premium funksiya."
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /restore - JSON zaxiradan qayta tiklash
+# ------------------------------------------------------------------
+
+RESTORE_USAGE = (
+    "Zaxira faylini (/backup orqali olingan .json) shu xabarga reply "
+    "qilib yoki faylni yuborib, ustiga \"/restore\" deb yozing."
+)
+RESTORE_NOT_JSON = "Bu fayl .json emas ekan, /backup orqali olingan zaxira faylini yuboring."
+RESTORE_BAD_FILE = (
+    "Bu faylni o'qiy olmadim - ACHI BOT zaxira fayli emas shekilli, yoki buzilgan."
+)
+RESTORE_IN_PROGRESS = "Zaxiradan qayta tiklanyapti, biroz kuting..."
+RESTORE_DONE = (
+    "Qayta tiklandi:\n"
+    "Sozlamalar: {settings} ta\n"
+    "Filtrlar: {filters} ta\n"
+    "Eslatmalar: {notes} ta\n"
+    "Personal buyruqlar: {personal} ta"
+)
 
 AUTOAPPROVE_USAGE = "Shunday yozing: /autoapprove on yoki /autoapprove off"
 AUTOAPPROVE_ON = (

@@ -143,7 +143,14 @@ CREATE TABLE IF NOT EXISTS chat_settings (
     daily_report_enabled INTEGER NOT NULL DEFAULT 0,
     daily_report_hour INTEGER NOT NULL DEFAULT 9,
     daily_report_admin_id INTEGER,
-    daily_report_last_date TEXT
+    daily_report_last_date TEXT,
+    -- Yangi a'zolarni qo'lda tasdiqlash rejimi (/approval) - captcha
+    -- bilan bir vaqtda ham ishlatilishi mumkin.
+    approval_enabled INTEGER NOT NULL DEFAULT 0,
+    -- Flood limitiga yetganda nima qilinishi: 'mute' (standart),
+    -- 'warn', 'kick', 'ban', 'tban', 'tmute' (/setfloodmode orqali
+    -- o'zgartiriladi).
+    flood_action TEXT NOT NULL DEFAULT 'mute'
 );
 
 -- Havola oq ro'yxati (premium) - /lock link yoqilgan bo'lsa ham, shu
@@ -261,6 +268,21 @@ CREATE TABLE IF NOT EXISTS known_members (
     username TEXT,
     last_seen REAL NOT NULL,
     first_seen REAL,
+    -- /top buyrug'i uchun: shu odam guruhda nechta xabar yozganini
+    -- hisoblaymiz (middlewares.py'da har xabarda +1 qilinadi).
+    message_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (chat_id, user_id)
+);
+
+-- Yangi a'zolarni QO'LDA tasdiqlash rejimi (/approval) - captcha'dan
+-- farqli o'laroq, bu yerda odam tugma bosmaydi, ADMIN o'zi
+-- /approve yoki /deny deb tasdiqlaydi/rad etadi. Tasdiqlanmaguncha
+-- odam yoza olmaydi (restrict qilingan holatda turadi).
+CREATE TABLE IF NOT EXISTS pending_approval (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    join_message_id INTEGER,
+    created_at REAL NOT NULL,
     PRIMARY KEY (chat_id, user_id)
 );
 
@@ -328,6 +350,9 @@ class Database:
             "ALTER TABLE chat_settings ADD COLUMN daily_report_hour INTEGER NOT NULL DEFAULT 9",
             "ALTER TABLE chat_settings ADD COLUMN daily_report_admin_id INTEGER",
             "ALTER TABLE chat_settings ADD COLUMN daily_report_last_date TEXT",
+            "ALTER TABLE known_members ADD COLUMN message_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN approval_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN flood_action TEXT NOT NULL DEFAULT 'mute'",
         ]
         for sql in migrations:
             try:
@@ -562,6 +587,15 @@ class Database:
         )
         return await cursor.fetchall()
 
+    async def all_notes(self, chat_id: int) -> list[aiosqlite.Row]:
+        """`/backup`/`/restore` uchun - nom BILAN BIRGA matnini ham
+        qaytaradi (`list_notes`dan farqli, u faqat nom ro'yxatini
+        chiqaradi - masalan DM panelda tugma sifatida ko'rsatish uchun)."""
+        cursor = await self.conn.execute(
+            "SELECT name, content FROM notes WHERE chat_id = ? ORDER BY name", (chat_id,)
+        )
+        return await cursor.fetchall()
+
     async def remove_note(self, chat_id: int, name: str) -> bool:
         cursor = await self.conn.execute(
             "DELETE FROM notes WHERE chat_id = ? AND name = ?",
@@ -641,6 +675,15 @@ class Database:
     async def list_custom_commands(self, chat_id: int) -> list[aiosqlite.Row]:
         cursor = await self.conn.execute(
             "SELECT name FROM custom_commands WHERE chat_id = ? ORDER BY name",
+            (chat_id,),
+        )
+        return await cursor.fetchall()
+
+    async def all_custom_commands(self, chat_id: int) -> list[aiosqlite.Row]:
+        """`/backup`/`/restore` uchun - nom BILAN BIRGA matnini ham
+        qaytaradi."""
+        cursor = await self.conn.execute(
+            "SELECT name, content FROM custom_commands WHERE chat_id = ? ORDER BY name",
             (chat_id,),
         )
         return await cursor.fetchall()
@@ -986,6 +1029,83 @@ class Database:
             cursor = await self.conn.execute(
                 "SELECT * FROM known_members WHERE chat_id = ?", (chat_id,)
             )
+        return await cursor.fetchall()
+
+    async def increment_message_count(self, chat_id: int, user_id: int) -> None:
+        """/top uchun - har xabarda +1 (upsert_known_member allaqachon
+        chaqirilgan bo'lishi kerak, shu sabab faqat UPDATE qilamiz)."""
+        await self.conn.execute(
+            "UPDATE known_members SET message_count = message_count + 1 "
+            "WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        await self.conn.commit()
+
+    async def top_active_members(self, chat_id: int, limit: int = 10) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            """
+            SELECT user_id, full_name, username, message_count
+            FROM known_members
+            WHERE chat_id = ? AND message_count > 0
+            ORDER BY message_count DESC
+            LIMIT ?
+            """,
+            (chat_id, limit),
+        )
+        return await cursor.fetchall()
+
+    async def count_all_messages(self, chat_id: int) -> int:
+        cursor = await self.conn.execute(
+            "SELECT COALESCE(SUM(message_count), 0) as c FROM known_members WHERE chat_id = ?",
+            (chat_id,),
+        )
+        row = await cursor.fetchone()
+        return int(row["c"]) if row else 0
+
+    # ------------------------------------------------------------------
+    # Approval queue (/approval, /approve, /deny - qo'lda tasdiqlash)
+    # ------------------------------------------------------------------
+
+    async def add_pending_approval(
+        self, chat_id: int, user_id: int, join_message_id: int | None
+    ) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO pending_approval (chat_id, user_id, join_message_id, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO UPDATE SET
+                join_message_id = excluded.join_message_id,
+                created_at = excluded.created_at
+            """,
+            (chat_id, user_id, join_message_id, time.time()),
+        )
+        await self.conn.commit()
+
+    async def pop_pending_approval(self, chat_id: int, user_id: int) -> aiosqlite.Row | None:
+        cursor = await self.conn.execute(
+            "SELECT * FROM pending_approval WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        row = await cursor.fetchone()
+        if row:
+            await self.conn.execute(
+                "DELETE FROM pending_approval WHERE chat_id = ? AND user_id = ?",
+                (chat_id, user_id),
+            )
+            await self.conn.commit()
+        return row
+
+    async def is_pending_approval(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "SELECT 1 FROM pending_approval WHERE chat_id = ? AND user_id = ?",
+            (chat_id, user_id),
+        )
+        return await cursor.fetchone() is not None
+
+    async def list_pending_approvals(self, chat_id: int) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM pending_approval WHERE chat_id = ?", (chat_id,)
+        )
         return await cursor.fetchall()
 
     # ------------------------------------------------------------------

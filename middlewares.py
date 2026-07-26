@@ -61,6 +61,7 @@ class EnsureChatMiddleware(BaseMiddleware):
             _known_chats.add(chat.id)
 
         await self._track_member(event, chat)
+        await self._track_message_count(event, chat)
 
         return await handler(event, data)
 
@@ -84,6 +85,28 @@ class EnsureChatMiddleware(BaseMiddleware):
         except Exception:
             pass
         _member_last_tracked[key] = now
+
+    async def _track_message_count(self, event: TelegramObject, chat) -> None:
+        """
+        /top buyrug'i (eng faol a'zolar reytingi) uchun - HAR bir
+        xabarda +1 qilamiz (yuqoridagi `_track_member`dan farqli, u
+        5 daqiqada bir marta ism/username yangilaydi, xabar sonini
+        emas). Foydalanuvchi avval `known_members`da bo'lishi kerak
+        (upsert_known_member orqali) - shu sabab bu funksiya
+        `_track_member`dan KEYIN chaqiriladi.
+        """
+        if chat is None or chat.type not in ("group", "supergroup"):
+            return
+        inner = event.event if isinstance(event, Update) else event
+        if not isinstance(inner, Message) or not inner.text:
+            return
+        user = getattr(inner, "from_user", None)
+        if user is None or user.is_bot:
+            return
+        try:
+            await db.increment_message_count(chat.id, user.id)
+        except Exception:
+            pass
 
 
 _FLOOD_MUTE_SECONDS = 10 * 60
@@ -149,28 +172,130 @@ class FloodMiddleware(BaseMiddleware):
 
         if len(window) > flood_limit:
             window.clear()
-            _flood_muted_until[key] = now + _FLOOD_MUTE_SECONDS
-            mention = mention_html(user.id, user.full_name)
+
+            # /setfloodmode orqali o'rnatilgan amal (standart: "mute") -
+            # GroupHelpBot'dagi FloodService::getAction() mantig'iga mos:
+            # warn/mute/tmute/kick/ban/tban.
+            flood_action = "mute"
             try:
-                await bot.restrict_chat_member(
-                    event.chat.id,
-                    user.id,
-                    permissions=ChatPermissions(can_send_messages=False),
-                    until_date=int(now) + _FLOOD_MUTE_SECONDS,
-                )
-                await db.log_action(
-                    chat_id=event.chat.id,
-                    chat_title=event.chat.title,
-                    action="mute",
-                    target_id=user.id,
-                    target_name=user.full_name,
-                    target_username=user.username,
-                    admin_id=0,
-                    admin_name="ACHI BOT (anti-flood)",
-                    reason="Flood - juda tez-tez xabar yozdi",
-                    duration="10 daqiqa",
-                )
-                await event.answer(texts.FLOOD_MUTED.format(mention=mention))
+                if chat_row and chat_row["flood_action"]:
+                    flood_action = chat_row["flood_action"]
+            except Exception:
+                pass
+
+            mention = mention_html(user.id, user.full_name)
+            # "warn" bundan mustasno - u odamni cheklamaydi, shu sabab
+            # keyingi flood tekshiruvi darrov yana ishlayversin (mute
+            # cooldown'ini o'rnatmaymiz).
+            if flood_action != "warn":
+                _flood_muted_until[key] = now + _FLOOD_MUTE_SECONDS
+
+            try:
+                if flood_action == "warn":
+                    await event.answer(texts.FLOOD_WARNING.format(mention=mention))
+
+                elif flood_action == "tmute":
+                    await bot.restrict_chat_member(
+                        event.chat.id,
+                        user.id,
+                        permissions=ChatPermissions(can_send_messages=False),
+                        until_date=int(now) + _FLOOD_MUTE_SECONDS,
+                    )
+                    await db.log_action(
+                        chat_id=event.chat.id,
+                        chat_title=event.chat.title,
+                        action="tmute",
+                        target_id=user.id,
+                        target_name=user.full_name,
+                        target_username=user.username,
+                        admin_id=0,
+                        admin_name="ACHI BOT (anti-flood)",
+                        reason="Flood - juda tez-tez xabar yozdi",
+                        duration="10 daqiqa",
+                    )
+                    await event.answer(texts.FLOOD_MUTED.format(mention=mention))
+
+                elif flood_action == "mute":
+                    await bot.restrict_chat_member(
+                        event.chat.id,
+                        user.id,
+                        permissions=ChatPermissions(can_send_messages=False),
+                    )
+                    await db.log_action(
+                        chat_id=event.chat.id,
+                        chat_title=event.chat.title,
+                        action="mute",
+                        target_id=user.id,
+                        target_name=user.full_name,
+                        target_username=user.username,
+                        admin_id=0,
+                        admin_name="ACHI BOT (anti-flood)",
+                        reason="Flood - juda tez-tez xabar yozdi",
+                        duration=None,
+                    )
+                    await event.answer(texts.FLOOD_MUTED_PERMANENT.format(mention=mention))
+
+                elif flood_action == "kick":
+                    await bot.ban_chat_member(event.chat.id, user.id)
+                    await bot.unban_chat_member(event.chat.id, user.id, only_if_banned=True)
+                    await db.log_action(
+                        chat_id=event.chat.id,
+                        chat_title=event.chat.title,
+                        action="kick",
+                        target_id=user.id,
+                        target_name=user.full_name,
+                        target_username=user.username,
+                        admin_id=0,
+                        admin_name="ACHI BOT (anti-flood)",
+                        reason="Flood - juda tez-tez xabar yozdi",
+                    )
+                    await event.answer(texts.FLOOD_KICKED.format(mention=mention))
+
+                elif flood_action == "tban":
+                    await bot.ban_chat_member(
+                        event.chat.id, user.id, until_date=int(now) + _FLOOD_MUTE_SECONDS
+                    )
+                    await db.log_action(
+                        chat_id=event.chat.id,
+                        chat_title=event.chat.title,
+                        action="tban",
+                        target_id=user.id,
+                        target_name=user.full_name,
+                        target_username=user.username,
+                        admin_id=0,
+                        admin_name="ACHI BOT (anti-flood)",
+                        reason="Flood - juda tez-tez xabar yozdi",
+                        duration="10 daqiqa",
+                    )
+                    await event.answer(
+                        texts.FLOOD_TBANNED.format(mention=mention, duration="10 daqiqa")
+                    )
+
+                elif flood_action == "ban":
+                    await bot.ban_chat_member(event.chat.id, user.id)
+                    await db.log_action(
+                        chat_id=event.chat.id,
+                        chat_title=event.chat.title,
+                        action="ban",
+                        target_id=user.id,
+                        target_name=user.full_name,
+                        target_username=user.username,
+                        admin_id=0,
+                        admin_name="ACHI BOT (anti-flood)",
+                        reason="Flood - juda tez-tez xabar yozdi",
+                    )
+                    await event.answer(texts.FLOOD_BANNED.format(mention=mention))
+
+                else:
+                    # Noma'lum qiymat bo'lib qolsa (masalan eski ma'lumot)
+                    # - xavfsiz standart: mute.
+                    await bot.restrict_chat_member(
+                        event.chat.id,
+                        user.id,
+                        permissions=ChatPermissions(can_send_messages=False),
+                        until_date=int(now) + _FLOOD_MUTE_SECONDS,
+                    )
+                    await event.answer(texts.FLOOD_MUTED.format(mention=mention))
             except Exception:
                 pass
             return  # flood qilingan xabarni boshqa handlerlarga yubormaymiz

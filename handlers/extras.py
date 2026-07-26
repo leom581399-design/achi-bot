@@ -314,6 +314,54 @@ async def cmd_topwarns(message: Message) -> None:
 
 
 # ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /top - eng faol a'zolar reytingi
+# ------------------------------------------------------------------
+
+
+@router.message(Command("top"))
+async def cmd_top(message: Message) -> None:
+    """
+    Guruhda kim ko'p yozganini ko'rsatadi (xabar soni bo'yicha reyting).
+    /topwarns'dan farqi: bu ijobiy faollik reytingi, jazoga aloqasi yo'q.
+    """
+    if message.chat.type not in ("group", "supergroup"):
+        await message.reply(texts.ONLY_IN_GROUP)
+        return
+    rows = await db.top_active_members(message.chat.id, limit=10)
+    if not rows:
+        await message.reply(texts.TOP_EMPTY)
+        return
+    lines = [texts.TOP_HEADER]
+    medals = {1: "1.", 2: "2.", 3: "3."}
+    for i, row in enumerate(rows, start=1):
+        pos_label = medals.get(i, f"{i}.")
+        name = f"@{row['username']}" if row["username"] else (row["full_name"] or str(row["user_id"]))
+        lines.append(texts.TOP_ITEM.format(pos=pos_label, name=name, count=row["message_count"]))
+    await message.reply("\n".join(lines))
+
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /setfloodmode - flood limitiga
+# yetganda nima qilinishi (standart: mute)
+# ------------------------------------------------------------------
+
+_VALID_FLOOD_ACTIONS = ("warn", "mute", "kick", "ban", "tban", "tmute")
+
+
+@router.message(Command("setfloodmode"))
+async def cmd_setfloodmode(message: Message, command: CommandObject, bot: Bot) -> None:
+    if not await _guard_admin(message, bot):
+        return
+    action = (command.args or "").strip().lower()
+    if action not in _VALID_FLOOD_ACTIONS:
+        await message.reply(texts.SETFLOODMODE_USAGE)
+        return
+    await db.ensure_chat(message.chat.id, message.chat.title)
+    await db.update_chat_setting(message.chat.id, flood_action=action)
+    await message.reply(texts.SETFLOODMODE_SET.format(action=action))
+
+
+# ------------------------------------------------------------------
 # 11. /invite
 # ------------------------------------------------------------------
 

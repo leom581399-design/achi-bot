@@ -629,19 +629,152 @@ async def cmd_backup(message: Message, bot: Bot) -> None:
 
     row = await db.get_chat_settings(message.chat.id)
     filters_rows = await db.all_filters(message.chat.id)
-    notes_rows = await db.list_notes(message.chat.id)
-    custom_commands_rows = await db.list_custom_commands(message.chat.id)
+    # `/restore` uchun nomi bilan birga MATNINI HAM saqlaymiz (avval
+    # faqat nomlar yozilardi - shu bilan qayta tiklab bo'lmasdi).
+    notes_rows = await db.all_notes(message.chat.id)
+    custom_commands_rows = await db.all_custom_commands(message.chat.id)
 
     data = {
+        # Formatni /restore tekshira olishi uchun kichik "versiya" belgisi.
+        "achi_backup_version": 1,
         "chat_id": message.chat.id,
         "chat_title": message.chat.title,
         "settings": {k: row[k] for k in row.keys()} if row else {},
         "filters": [dict(r) for r in filters_rows],
-        "notes": [r["name"] for r in notes_rows],
-        "custom_commands": [r["name"] for r in custom_commands_rows],
+        "notes": [dict(r) for r in notes_rows],
+        "custom_commands": [dict(r) for r in custom_commands_rows],
     }
     payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
     filename = f"achi_backup_{message.chat.id}.json"
     await bot.send_document(
         message.chat.id, BufferedInputFile(payload, filename=filename), caption=texts.BACKUP_CAPTION
+    )
+
+
+# ------------------------------------------------------------------
+# GroupHelpBot'dan ilhomlanib: /restore - JSON zaxira nusxadan
+# guruh sozlamalarini qayta tiklash (/backup'ning teskarisi)
+# ------------------------------------------------------------------
+
+# `settings` bo'limidan qaysi ustunlarni tiklashga ruxsat berilgan -
+# xavfsizlik uchun MUHIM: `chat_id`/`chat_title` (ensure_chat orqali
+# allaqachon to'g'ri o'rnatiladi) va `premium_until`/`premium_lifetime`
+# (JSON fayl orqali premium "sotib olib" bo'lmasligi kerak-a) BU
+# RO'YXATGA QO'SHILMAGAN - ataylab.
+_RESTORABLE_SETTING_KEYS = frozenset(
+    {
+        "welcome_text", "goodbye_text", "rules_text", "clean_service",
+        "captcha_enabled", "report_enabled", "auto_approve_join",
+        "ai_moderation_enabled", "language", "warn_action",
+        "night_mode_enabled", "night_start_hour", "night_end_hour",
+        "flood_limit_override", "flood_window_override", "warn_expiry_days",
+        "text_captcha_question", "text_captcha_answer", "autodelete_seconds",
+        "slowmode_seconds", "silent_admin_actions", "auto_pin_welcome",
+        "anti_raid_enabled", "anti_raid_threshold", "anti_raid_window_sec",
+        "approval_enabled", "flood_action",
+    }
+)
+
+
+async def _load_backup_json(message: Message, bot: Bot) -> dict | None:
+    """Reply qilingan (yoki joriy) xabardagi `.json` hujjatni topib,
+    yuklab, parse qiladi. Muvaffaqiyatsiz bo'lsa foydalanuvchiga mos
+    xabar yozib, `None` qaytaradi."""
+    document = None
+    if message.document:
+        document = message.document
+    elif message.reply_to_message and message.reply_to_message.document:
+        document = message.reply_to_message.document
+
+    if not document:
+        await message.reply(texts.RESTORE_USAGE)
+        return None
+
+    if not (document.file_name or "").lower().endswith(".json"):
+        await message.reply(texts.RESTORE_NOT_JSON)
+        return None
+
+    try:
+        buffer = await bot.download(document.file_id)
+        raw = buffer.read()
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        await message.reply(texts.RESTORE_BAD_FILE)
+        return None
+
+    if not isinstance(data, dict) or "achi_backup_version" not in data:
+        await message.reply(texts.RESTORE_BAD_FILE)
+        return None
+
+    return data
+
+
+@router.message(Command("restore"))
+async def cmd_restore(message: Message, bot: Bot) -> None:
+    """
+    GroupHelpBot'dagi backup/restore juftligidan ilhomlanib qo'shilgan -
+    lekin PHP kod ko'chirilmagan, ACHI BOT'ning o'z `/backup` formatiga
+    mos, funksional ekvivalent yozilgan. `/backup` qaysi hujjatni
+    yaratgan bo'lsa (`.json`), shu faylga reply qilib (yoki to'g'ridan-
+    to'g'ri fayl bilan birga) `/restore` deb yozish kerak.
+    """
+    if not await _guard_admin(message, bot):
+        return
+    if not await _require_premium(message, texts.BACKUP_REQUIRES_PREMIUM):
+        return
+
+    data = await _load_backup_json(message, bot)
+    if data is None:
+        return
+
+    await message.reply(texts.RESTORE_IN_PROGRESS)
+    chat_id = message.chat.id
+    await db.ensure_chat(chat_id, message.chat.title)
+
+    settings_count = 0
+    raw_settings = data.get("settings") or {}
+    if isinstance(raw_settings, dict):
+        to_restore = {
+            k: v for k, v in raw_settings.items() if k in _RESTORABLE_SETTING_KEYS
+        }
+        if to_restore:
+            await db.update_chat_setting(chat_id, **to_restore)
+            settings_count = len(to_restore)
+
+    filters_count = 0
+    for item in data.get("filters") or []:
+        trigger = (item or {}).get("trigger")
+        reply = (item or {}).get("reply")
+        if trigger and reply:
+            await db.set_filter(chat_id, trigger, reply)
+            filters_count += 1
+
+    notes_count = 0
+    for item in data.get("notes") or []:
+        name = (item or {}).get("name")
+        content = (item or {}).get("content")
+        if name and content:
+            await db.save_note(chat_id, name, content)
+            notes_count += 1
+
+    # Personal (custom) buyruqlar - botning ichki buyruqlari bilan
+    # to'qnashmasligi uchun RESERVED_COMMAND_NAMES'dan foydalanamiz
+    # (xuddi /personal buyrug'ida qilinganidek).
+    from handlers.content import RESERVED_COMMAND_NAMES
+
+    personal_count = 0
+    for item in data.get("custom_commands") or []:
+        name = (item or {}).get("name")
+        content = (item or {}).get("content")
+        if name and content and name.lower() not in RESERVED_COMMAND_NAMES:
+            await db.add_custom_command(chat_id, name, content, message.from_user.id)
+            personal_count += 1
+
+    await message.reply(
+        texts.RESTORE_DONE.format(
+            settings=settings_count,
+            filters=filters_count,
+            notes=notes_count,
+            personal=personal_count,
+        )
     )

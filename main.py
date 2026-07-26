@@ -25,11 +25,13 @@ from handlers import (
     admin_tools,
     content,
     cs2_market,
+    extras,
     federation,
     greetings,
     moderation,
     panel,
     premium,
+    premium_extras,
     report,
 )
 from middlewares import EnsureChatMiddleware, FloodMiddleware
@@ -85,6 +87,30 @@ def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
         except Exception:
             logger.exception("Captcha tozalashda xatolik")
 
+    async def _scheduled_messages_job() -> None:
+        try:
+            from handlers.premium_extras import run_scheduled_messages
+
+            await run_scheduled_messages(bot)
+        except Exception:
+            logger.exception("Rejalashtirilgan xabarlarni yuborishda xatolik")
+
+    async def _daily_reports_job() -> None:
+        try:
+            from handlers.premium_extras import run_daily_reports
+
+            await run_daily_reports(bot)
+        except Exception:
+            logger.exception("Kunlik hisobotlarni yuborishda xatolik")
+
+    async def _night_mode_job() -> None:
+        try:
+            from handlers.night_mode import sweep_night_mode
+
+            await sweep_night_mode(bot)
+        except Exception:
+            logger.exception("Tungi rejimni tekshirishda xatolik")
+
     scheduler.add_job(
         _hourly_job,
         trigger="interval",
@@ -99,6 +125,14 @@ def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
         seconds=20,
         id="captcha_sweep",
     )
+    # Rejalashtirilgan xabarlar, kunlik hisobotlar va tungi rejim daqiqa
+    # aniqligida ishlashi kerak (masalan "09:00"da) - shu sabab har
+    # daqiqada tekshiramiz.
+    scheduler.add_job(
+        _scheduled_messages_job, trigger="interval", minutes=1, id="scheduled_messages"
+    )
+    scheduler.add_job(_daily_reports_job, trigger="interval", minutes=1, id="daily_reports")
+    scheduler.add_job(_night_mode_job, trigger="interval", minutes=1, id="night_mode")
     return scheduler
 
 
@@ -130,6 +164,8 @@ async def main() -> None:
     dp.include_router(panel.router)
     dp.include_router(moderation.router)
     dp.include_router(premium.router)
+    dp.include_router(premium_extras.router)
+    dp.include_router(extras.router)
     dp.include_router(federation.router)
     dp.include_router(admin_tools.router)
     dp.include_router(cs2_market.router)

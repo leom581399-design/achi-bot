@@ -98,7 +98,106 @@ CREATE TABLE IF NOT EXISTS chat_settings (
     -- bir matnli xabar spam/haqoratga o'xshab ko'rinsa avtomatik
     -- o'chiriladi. STANDART HOLATDA O'CHIRILGAN - admin DM panel orqali
     -- (yoki /aimod on) o'zi yoqadi.
-    ai_moderation_enabled INTEGER NOT NULL DEFAULT 0
+    ai_moderation_enabled INTEGER NOT NULL DEFAULT 0,
+    -- Bot tili shu guruh uchun: "uz" (standart, Toshkent shevasi) yoki
+    -- "ru" (rus tili). DM panel yoki /language orqali o'zgartiriladi.
+    language TEXT NOT NULL DEFAULT 'uz',
+    -- Ogohlantirish (warn) limitiga yetilganda nima qilinishi: 'ban'
+    -- (standart) yoki 'mute' (faqat ovozini o'chirish, chiqarmasdan).
+    warn_action TEXT NOT NULL DEFAULT 'ban',
+    -- Tungi rejim (premium): yoqilgan bo'lsa, belgilangan soatlar
+    -- oralig'ida guruh avtomatik "hammasi taqiqlangan" holatga o'tadi.
+    night_mode_enabled INTEGER NOT NULL DEFAULT 0,
+    night_start_hour INTEGER NOT NULL DEFAULT 23,
+    night_end_hour INTEGER NOT NULL DEFAULT 7,
+    -- Moslashtiriladigan flood chegarasi (premium) - NULL bo'lsa
+    -- global standart (config.py'dagi flood_message_limit/
+    -- flood_time_window_sec) ishlatiladi.
+    flood_limit_override INTEGER,
+    flood_window_override INTEGER,
+    -- Ogohlantirish muddati (premium) - necha kundan keyin eski
+    -- ogohlantirishlar hisobga olinmay qo'yishi (0 = cheksiz, standart).
+    warn_expiry_days INTEGER NOT NULL DEFAULT 0,
+    -- Matn-savol captcha (premium, oddiy tugmali captcha o'rniga)
+    text_captcha_question TEXT,
+    text_captcha_answer TEXT,
+    -- Filtr/personal/eslatma javoblari necha soniyadan keyin avtomatik
+    -- o'chirilishi (premium, "autodelete" rejimi). 0 = o'chmaydi.
+    autodelete_seconds INTEGER NOT NULL DEFAULT 0,
+    -- "Yumshoq" slowmode (bepul funksiya) - shu soniyadan tezroq ketma-ket
+    -- xabar yozgan (admin bo'lmagan) foydalanuvchining xabari o'chiriladi.
+    -- 0 = o'chirilgan.
+    slowmode_seconds INTEGER NOT NULL DEFAULT 0,
+    -- Admin buyruq xabarlarini avtomatik o'chirish (premium, "silent mode") -
+    -- yoqilsa, /ban, /mute va h.k. buyruq matnining o'zi guruhdan o'chadi,
+    -- faqat natija xabari qoladi (guruh tozaroq ko'rinadi).
+    silent_admin_actions INTEGER NOT NULL DEFAULT 0,
+    -- Yangi xush kelibsiz xabarini avtomatik pin qilish (premium)
+    auto_pin_welcome INTEGER NOT NULL DEFAULT 0,
+    -- Anti-raid (premium): qisqa vaqt ichida ko'p odam qo'shilsa,
+    -- guruh vaqtincha "hammasi taqiqlangan" holatga o'tadi.
+    anti_raid_enabled INTEGER NOT NULL DEFAULT 0,
+    anti_raid_threshold INTEGER NOT NULL DEFAULT 5,
+    anti_raid_window_sec INTEGER NOT NULL DEFAULT 60,
+    -- Har kunlik avtomatik hisobot - admin DM'iga (premium)
+    daily_report_enabled INTEGER NOT NULL DEFAULT 0,
+    daily_report_hour INTEGER NOT NULL DEFAULT 9,
+    daily_report_admin_id INTEGER,
+    daily_report_last_date TEXT
+);
+
+-- Havola oq ro'yxati (premium) - /lock link yoqilgan bo'lsa ham, shu
+-- ro'yxatdagi domenlarga havolalar taqiqlanmaydi.
+CREATE TABLE IF NOT EXISTS link_whitelist (
+    chat_id INTEGER NOT NULL,
+    domain TEXT NOT NULL,
+    PRIMARY KEY (chat_id, domain)
+);
+
+-- Taqiqlangan so'zlar (bepul funksiya) - AI moderatsiyadan farqli
+-- o'laroq, bu yerda so'z ANIQ ro'yxatga kiritilgan bo'lishi kerak (AI
+-- aql bilan baholamaydi, oddiy qidiruv). Admin bo'lmagan foydalanuvchi
+-- shu so'zlardan birini ishlatsa, xabari o'chiriladi.
+CREATE TABLE IF NOT EXISTS bad_words (
+    chat_id INTEGER NOT NULL,
+    word TEXT NOT NULL,
+    added_by INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (chat_id, word)
+);
+
+-- Rejalashtirilgan takroriy xabarlar (premium) - har kuni belgilangan
+-- soat:daqiqada shu guruhga avtomatik yuboriladi.
+CREATE TABLE IF NOT EXISTS scheduled_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    hour INTEGER NOT NULL,
+    minute INTEGER NOT NULL,
+    created_by INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    last_sent_date TEXT
+);
+
+-- VIP foydalanuvchilar (premium) - warn/flood cheklovlaridan ozod
+-- qilingan a'zolar (masalan guruh homiylari, hurmatli mehmonlar).
+CREATE TABLE IF NOT EXISTS vip_users (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    added_by INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (chat_id, user_id)
+);
+
+-- Moderatorlar (premium) - "kichik admin": faqat warn/mute qila oladi,
+-- ban/kick/adminlikka tegmaydi. Haqiqiy Telegram admin huquqi
+-- berilmaydi - bot ichki tekshiruv orqali ruxsat beradi.
+CREATE TABLE IF NOT EXISTS moderators (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    added_by INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (chat_id, user_id)
 );
 
 -- Telegram Stars orqali qilingan barcha to'lovlar tarixi (audit uchun)
@@ -186,6 +285,7 @@ class Database:
     def __init__(self, path: str):
         self.path = path
         self._conn: Optional[aiosqlite.Connection] = None
+        self._language_cache: dict[int, str] = {}
 
     async def connect(self) -> None:
         self._conn = await aiosqlite.connect(self.path)
@@ -207,6 +307,27 @@ class Database:
             "ALTER TABLE known_members ADD COLUMN first_seen REAL",
             "ALTER TABLE chat_settings ADD COLUMN auto_approve_join INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE chat_settings ADD COLUMN ai_moderation_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'uz'",
+            "ALTER TABLE chat_settings ADD COLUMN warn_action TEXT NOT NULL DEFAULT 'ban'",
+            "ALTER TABLE chat_settings ADD COLUMN night_mode_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN night_start_hour INTEGER NOT NULL DEFAULT 23",
+            "ALTER TABLE chat_settings ADD COLUMN night_end_hour INTEGER NOT NULL DEFAULT 7",
+            "ALTER TABLE chat_settings ADD COLUMN flood_limit_override INTEGER",
+            "ALTER TABLE chat_settings ADD COLUMN flood_window_override INTEGER",
+            "ALTER TABLE chat_settings ADD COLUMN warn_expiry_days INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN text_captcha_question TEXT",
+            "ALTER TABLE chat_settings ADD COLUMN text_captcha_answer TEXT",
+            "ALTER TABLE chat_settings ADD COLUMN autodelete_seconds INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN slowmode_seconds INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN silent_admin_actions INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN auto_pin_welcome INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN anti_raid_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN anti_raid_threshold INTEGER NOT NULL DEFAULT 5",
+            "ALTER TABLE chat_settings ADD COLUMN anti_raid_window_sec INTEGER NOT NULL DEFAULT 60",
+            "ALTER TABLE chat_settings ADD COLUMN daily_report_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_settings ADD COLUMN daily_report_hour INTEGER NOT NULL DEFAULT 9",
+            "ALTER TABLE chat_settings ADD COLUMN daily_report_admin_id INTEGER",
+            "ALTER TABLE chat_settings ADD COLUMN daily_report_last_date TEXT",
         ]
         for sql in migrations:
             try:
@@ -554,6 +675,26 @@ class Database:
             (*values, chat_id),
         )
         await self.conn.commit()
+        if "language" in fields:
+            self._language_cache[chat_id] = fields["language"]
+
+    async def get_chat_language(self, chat_id: int) -> str:
+        """
+        Guruh uchun tanlangan tilni qaytaradi ("uz" yoki "ru", standart
+        "uz"). Har bir matnli xabar/buyruq uchun DB'ga so'rov yubormaslik
+        uchun jarayon-ichi (in-process) keshlanadi - til juda kamdan-kam
+        o'zgaradi, shu sabab bu xavfsiz optimallashtirish.
+        """
+        if chat_id in self._language_cache:
+            return self._language_cache[chat_id]
+        row = await self.get_chat_settings(chat_id)
+        lang = (row["language"] if row and row["language"] else "uz")
+        self._language_cache[chat_id] = lang
+        return lang
+
+    async def set_chat_language(self, chat_id: int, lang: str) -> None:
+        await self.ensure_chat(chat_id, None)
+        await self.update_chat_setting(chat_id, language=lang)
 
     # ------------------------------------------------------------------
     # Captcha pending
@@ -879,6 +1020,242 @@ class Database:
             (chat_id, user_id),
         )
         return await cursor.fetchone() is not None
+
+    # ------------------------------------------------------------------
+    # Bad words (taqiqlangan so'zlar - bepul funksiya)
+    # ------------------------------------------------------------------
+
+    async def add_bad_word(self, chat_id: int, word: str, added_by: int) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO bad_words (chat_id, word, added_by, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, word) DO NOTHING
+            """,
+            (chat_id, word.lower(), added_by, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_bad_word(self, chat_id: int, word: str) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM bad_words WHERE chat_id = ? AND word = ?",
+            (chat_id, word.lower()),
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def list_bad_words(self, chat_id: int) -> list[str]:
+        cursor = await self.conn.execute(
+            "SELECT word FROM bad_words WHERE chat_id = ? ORDER BY word", (chat_id,)
+        )
+        rows = await cursor.fetchall()
+        return [r["word"] for r in rows]
+
+    # ------------------------------------------------------------------
+    # Scheduled messages (rejalashtirilgan xabarlar - premium)
+    # ------------------------------------------------------------------
+
+    async def add_scheduled_message(
+        self, chat_id: int, text: str, hour: int, minute: int, created_by: int
+    ) -> int:
+        cursor = await self.conn.execute(
+            """
+            INSERT INTO scheduled_messages (chat_id, text, hour, minute, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (chat_id, text, hour, minute, created_by, time.time()),
+        )
+        await self.conn.commit()
+        return cursor.lastrowid
+
+    async def list_scheduled_messages(self, chat_id: int) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM scheduled_messages WHERE chat_id = ? ORDER BY hour, minute",
+            (chat_id,),
+        )
+        return await cursor.fetchall()
+
+    async def remove_scheduled_message(self, message_id: int, chat_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM scheduled_messages WHERE id = ? AND chat_id = ?",
+            (message_id, chat_id),
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def get_all_scheduled_messages(self) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute("SELECT * FROM scheduled_messages")
+        return await cursor.fetchall()
+
+    async def mark_scheduled_message_sent(self, message_id: int, date_str: str) -> None:
+        await self.conn.execute(
+            "UPDATE scheduled_messages SET last_sent_date = ? WHERE id = ?",
+            (date_str, message_id),
+        )
+        await self.conn.commit()
+
+    # ------------------------------------------------------------------
+    # VIP users (premium)
+    # ------------------------------------------------------------------
+
+    async def add_vip(self, chat_id: int, user_id: int, added_by: int) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO vip_users (chat_id, user_id, added_by, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO NOTHING
+            """,
+            (chat_id, user_id, added_by, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_vip(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM vip_users WHERE chat_id = ? AND user_id = ?", (chat_id, user_id)
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def is_vip(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "SELECT 1 FROM vip_users WHERE chat_id = ? AND user_id = ?", (chat_id, user_id)
+        )
+        return await cursor.fetchone() is not None
+
+    async def list_vips(self, chat_id: int) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM vip_users WHERE chat_id = ?", (chat_id,)
+        )
+        return await cursor.fetchall()
+
+    # ------------------------------------------------------------------
+    # Moderators (premium - "kichik admin")
+    # ------------------------------------------------------------------
+
+    async def add_moderator(self, chat_id: int, user_id: int, added_by: int) -> None:
+        await self.conn.execute(
+            """
+            INSERT INTO moderators (chat_id, user_id, added_by, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO NOTHING
+            """,
+            (chat_id, user_id, added_by, time.time()),
+        )
+        await self.conn.commit()
+
+    async def remove_moderator(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM moderators WHERE chat_id = ? AND user_id = ?", (chat_id, user_id)
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def is_moderator(self, chat_id: int, user_id: int) -> bool:
+        cursor = await self.conn.execute(
+            "SELECT 1 FROM moderators WHERE chat_id = ? AND user_id = ?", (chat_id, user_id)
+        )
+        return await cursor.fetchone() is not None
+
+    async def list_moderators(self, chat_id: int) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM moderators WHERE chat_id = ?", (chat_id,)
+        )
+        return await cursor.fetchall()
+
+    # ------------------------------------------------------------------
+    # Statistika yordamchilari (bepul + premium)
+    # ------------------------------------------------------------------
+
+    async def count_actions_by_type_since(self, chat_id: int, since_ts: float) -> dict[str, int]:
+        cursor = await self.conn.execute(
+            """
+            SELECT action, COUNT(*) as c FROM actions
+            WHERE chat_id = ? AND created_at >= ?
+            GROUP BY action
+            """,
+            (chat_id, since_ts),
+        )
+        rows = await cursor.fetchall()
+        return {r["action"]: r["c"] for r in rows}
+
+    async def top_admins_since(self, chat_id: int, since_ts: float, limit: int = 5) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            """
+            SELECT admin_name, admin_id, COUNT(*) as c FROM actions
+            WHERE chat_id = ? AND created_at >= ?
+            GROUP BY admin_id
+            ORDER BY c DESC
+            LIMIT ?
+            """,
+            (chat_id, since_ts, limit),
+        )
+        return await cursor.fetchall()
+
+    async def top_warned_users_since(
+        self, chat_id: int, since_ts: float, limit: int = 5
+    ) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            """
+            SELECT target_id, target_name, target_username, COUNT(*) as c
+            FROM warns
+            WHERE chat_id = ? AND created_at >= ?
+            GROUP BY target_id
+            ORDER BY c DESC
+            LIMIT ?
+            """,
+            (chat_id, since_ts, limit),
+        )
+        return await cursor.fetchall()
+
+    async def count_known_members(self, chat_id: int) -> int:
+        cursor = await self.conn.execute(
+            "SELECT COUNT(*) as c FROM known_members WHERE chat_id = ?", (chat_id,)
+        )
+        row = await cursor.fetchone()
+        return int(row["c"]) if row else 0
+
+    # ------------------------------------------------------------------
+    # Link whitelist (premium)
+    # ------------------------------------------------------------------
+
+    async def add_whitelisted_domain(self, chat_id: int, domain: str) -> None:
+        await self.conn.execute(
+            "INSERT OR IGNORE INTO link_whitelist (chat_id, domain) VALUES (?, ?)",
+            (chat_id, domain.lower()),
+        )
+        await self.conn.commit()
+
+    async def remove_whitelisted_domain(self, chat_id: int, domain: str) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM link_whitelist WHERE chat_id = ? AND domain = ?",
+            (chat_id, domain.lower()),
+        )
+        await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def list_whitelisted_domains(self, chat_id: int) -> list[str]:
+        cursor = await self.conn.execute(
+            "SELECT domain FROM link_whitelist WHERE chat_id = ?", (chat_id,)
+        )
+        rows = await cursor.fetchall()
+        return [r["domain"] for r in rows]
+
+    async def is_domain_whitelisted(self, chat_id: int, domain: str) -> bool:
+        domain = domain.lower()
+        cursor = await self.conn.execute(
+            "SELECT domain FROM link_whitelist WHERE chat_id = ?", (chat_id,)
+        )
+        rows = await cursor.fetchall()
+        return any(domain == r["domain"] or domain.endswith("." + r["domain"]) for r in rows)
+
+    async def list_daily_report_chats(self) -> list[aiosqlite.Row]:
+        cursor = await self.conn.execute(
+            "SELECT * FROM chat_settings WHERE daily_report_enabled = 1"
+        )
+        return await cursor.fetchall()
+
+    async def mark_daily_report_sent(self, chat_id: int, date_str: str) -> None:
+        await self.update_chat_setting(chat_id, daily_report_last_date=date_str)
 
 
 db = Database(settings.db_path)

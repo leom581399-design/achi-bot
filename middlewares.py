@@ -122,12 +122,32 @@ class FloodMiddleware(BaseMiddleware):
         if await is_chat_admin(bot, event.chat.id, user.id):
             return await handler(event, data)
 
+        # VIP a'zolar (premium funksiya - /vip orqali qo'shiladi) flood
+        # cheklovidan ozod - masalan guruh homiylari/hurmatli mehmonlar.
+        try:
+            if await db.is_vip(event.chat.id, user.id):
+                return await handler(event, data)
+        except Exception:
+            pass
+
+        # Premium: /floodlimit orqali guruhga xos chegara o'rnatilgan
+        # bo'lsa, global standart o'rniga o'shani ishlatamiz.
+        flood_limit = settings.flood_message_limit
+        flood_window = settings.flood_time_window_sec
+        try:
+            chat_row = await db.get_chat_settings(event.chat.id)
+            if chat_row and chat_row["flood_limit_override"] and chat_row["flood_window_override"]:
+                flood_limit = chat_row["flood_limit_override"]
+                flood_window = chat_row["flood_window_override"]
+        except Exception:
+            pass
+
         window = _recent_messages[key]
         window.append(now)
-        while window and now - window[0] > settings.flood_time_window_sec:
+        while window and now - window[0] > flood_window:
             window.popleft()
 
-        if len(window) > settings.flood_message_limit:
+        if len(window) > flood_limit:
             window.clear()
             _flood_muted_until[key] = now + _FLOOD_MUTE_SECONDS
             mention = mention_html(user.id, user.full_name)

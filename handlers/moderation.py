@@ -82,6 +82,27 @@ async def _guard(message: Message, bot: Bot) -> bool:
     if message.chat.type not in ("group", "supergroup"):
         await message.reply(texts.ONLY_IN_GROUP)
         return False
+    if not message.from_user:
+        await message.reply(texts.NOT_ADMIN)
+        return False
+    if await is_chat_admin(bot, message.chat.id, message.from_user.id):
+        return True
+    # Premium: /addmod orqali qo'shilgan "moderator" haqiqiy Telegram
+    # admin emas, lekin bot warn/mute buyruqlarini unga ruxsat beradi
+    # (ban/kick esa hali ham faqat haqiqiy adminlarga tegishli - shu
+    # tekshiruv har bir chaqiruvchi joyda alohida bajariladi).
+    if await db.is_moderator(message.chat.id, message.from_user.id):
+        return True
+    await message.reply(texts.NOT_ADMIN)
+    return False
+
+
+async def _guard_full_admin_only(message: Message, bot: Bot) -> bool:
+    """Ban/kick kabi og'ir amallar uchun - moderator YETARLI EMAS,
+    faqat haqiqiy Telegram admin ruxsat etiladi."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.reply(texts.ONLY_IN_GROUP)
+        return False
     if not message.from_user or not await is_chat_admin(
         bot, message.chat.id, message.from_user.id
     ):
@@ -228,15 +249,31 @@ async def _execute_action(
             reason=reason,
         )
         if count >= settings.max_warns:
-            try:
-                await bot.ban_chat_member(chat_id, target_id)
-            except TelegramAPIError:
-                await reply_message.answer(texts.BOT_NOT_ADMIN)
-                return
+            # Premium: /setwarnaction orqali "ban" o'rniga "mute" tanlash
+            # mumkin - masalan admin haddan tashqari qattiq ko'rinishni
+            # xohlamasa.
+            settings_row = await db.get_chat_settings(chat_id)
+            warn_action = (settings_row["warn_action"] if settings_row else "ban") or "ban"
+            if warn_action == "mute":
+                try:
+                    await bot.restrict_chat_member(
+                        chat_id, target_id, permissions=_MUTED_PERMISSIONS
+                    )
+                except TelegramAPIError:
+                    await reply_message.answer(texts.BOT_NOT_ADMIN)
+                    return
+                limit_action_name = "mute"
+            else:
+                try:
+                    await bot.ban_chat_member(chat_id, target_id)
+                except TelegramAPIError:
+                    await reply_message.answer(texts.BOT_NOT_ADMIN)
+                    return
+                limit_action_name = "ban"
             await db.log_action(
                 chat_id=chat_id,
                 chat_title=chat_title,
-                action="ban",
+                action=limit_action_name,
                 target_id=target_id,
                 target_name=target_name,
                 target_username=target_username,
@@ -262,6 +299,9 @@ async def _execute_action(
             )
 
 
+_MODERATOR_ALLOWED_ACTIONS = {"warn", "mute", "tmute"}
+
+
 async def _dispatch(
     message: Message,
     bot: Bot,
@@ -270,8 +310,15 @@ async def _dispatch(
     action: str,
     requires_duration: bool,
 ) -> None:
-    if not await _guard(message, bot):
-        return
+    # Ban/tban/kick - faqat haqiqiy admin. Warn/mute/tmute - moderator
+    # ("kichik admin", premium orqali /addmod bilan qo'shilgan) uchun
+    # ham ochiq.
+    if action in _MODERATOR_ALLOWED_ACTIONS:
+        if not await _guard(message, bot):
+            return
+    else:
+        if not await _guard_full_admin_only(message, bot):
+            return
 
     target, remaining_text = await resolve_target(message, bot, command.args)
     if not target:
@@ -284,6 +331,12 @@ async def _dispatch(
 
     if await is_target_admin(bot, message.chat.id, target.id):
         await message.reply(texts.CANT_ACT_ON_ADMIN)
+        return
+
+    # Premium: VIP a'zolar (/vip orqali qo'shilgan) ban/mute/warn
+    # qilinmaydi - masalan guruh homiylari uchun.
+    if await db.is_vip(message.chat.id, target.id):
+        await message.reply(texts.VIP_PROTECTED)
         return
 
     duration_seconds: int | None = None
@@ -585,6 +638,18 @@ async def _check_lock(message: Message, bot: Bot):
     locked_specific = await db.is_locked(message.chat.id, content_type)
     if not (locked_all or locked_specific):
         return False
+
+    # Premium: /allowlink orqali oq ro'yxatga qo'shilgan domenlarga
+    # havolalar - link qulfi yoqilgan bo'lsa ham - taqiqlanmaydi.
+    if content_type == "link" and message.text:
+        import re as _re
+
+        urls = _re.findall(r"https?://([^/\s]+)|t\.me/([^/\s]+)", message.text)
+        domains = [d for pair in urls for d in pair if d]
+        if domains and all(
+            await db.is_domain_whitelisted(message.chat.id, d) for d in domains
+        ):
+            return False
 
     return {"lock_content_type": content_type}
 

@@ -812,6 +812,97 @@ PANEL_REPORT_PREPARING = "Tayyorlanyapti, hozir yuboraman..."
 PANEL_FEDERATION_NONE = "Bu guruh hech qanaqa federatsiyaga ulanmagan."
 PANEL_ADMIN_TOOLS_HEADER = "Guruh adminlari:"
 
+# --- Qayta qurilgan menyu (kichik menyularga guruhlangan) ---
+PANEL_BTN_MODERATION_MENU = "Moderatsiya"
+PANEL_BTN_SETTINGS_MENU = "Sozlamalar"
+PANEL_BTN_CONTENT_MENU = "Filtr va eslatma"
+PANEL_BTN_PREMIUM_CENTER_MENU = "Premium markazi"
+PANEL_BTN_OTHER_MENU = "Boshqalar"
+PANEL_BTN_LANGUAGE = "Til"
+PANEL_BTN_STATS = "Statistika"
+PANEL_BTN_BADWORDS = "Taqiqlangan so'zlar"
+PANEL_BTN_SLOWMODE = "Tezlik cheklovi"
+PANEL_BTN_WARNACTION = "Ogohlantirish limiti"
+PANEL_BTN_FLOODLIMIT = "Flood chegarasi"
+PANEL_BTN_ANTIRAID = "Anti-raid"
+PANEL_BTN_NIGHTMODE = "Tungi rejim"
+PANEL_BTN_LINKWHITELIST = "Havola oq ro'yxati"
+PANEL_BTN_WARNEXPIRY = "Ogohlantirish muddati"
+PANEL_BTN_TEXTCAPTCHA = "Matn-captcha"
+PANEL_BTN_AUTODELETE = "Javoblarni avto o'chirish"
+PANEL_BTN_SILENTMODE = "Silent rejim"
+PANEL_BTN_VIP = "VIP a'zolar"
+PANEL_BTN_MODERATORS = "Moderatorlar"
+PANEL_BTN_SCHEDULE = "Rejalashtirilgan xabar"
+PANEL_BTN_DAILYREPORT = "Kunlik hisobot"
+PANEL_BTN_BACKUP = "Zaxira nusxa"
+
+PANEL_MAIN_MENU_HEADER = "<b>{title}</b>\n{premium_line}\nTil: {language}\n\nNimani sozlaymiz?"
+PANEL_PREMIUM_LINE_ACTIVE = "Holat: premium faol"
+PANEL_PREMIUM_LINE_NONE = "Holat: premium yo'q"
+PANEL_MODERATION_MENU_HEADER = "Moderatsiya sozlamalari:"
+PANEL_SETTINGS_MENU_HEADER = "Guruh sozlamalari:"
+PANEL_CONTENT_MENU_HEADER = "Filtr, eslatma va personal buyruqlar:"
+PANEL_PREMIUM_CENTER_HEADER = "Premium markazi - barcha kuchli funksiyalar shu yerda:\n{status}"
+PANEL_OTHER_MENU_HEADER = "Boshqa vositalar:"
+
+PANEL_BADWORDS_HEADER = "Taqiqlangan so'zlar (bosib o'chirasiz):"
+PANEL_BADWORDS_EMPTY = "Hozircha taqiqlangan so'z yo'q."
+PANEL_ASK_BADWORD = "Taqiqlanadigan so'zni yozing:"
+
+PANEL_ASK_SLOWMODE = "Necha soniyada bir marta yozish mumkinligini yozing (masalan: 10). O'chirish uchun: 0"
+PANEL_SLOWMODE_HEADER = "Tezlik cheklovi: {status}"
+
+PANEL_WARNACTION_HEADER = "Ogohlantirish limitiga yetganda nima qilinsin?"
+PANEL_BTN_WARNACTION_BAN = "Ban qilish"
+PANEL_BTN_WARNACTION_MUTE = "Faqat mute qilish"
+
+PANEL_ASK_FLOODLIMIT = "Chegarani yozing: xabar_soni soniya (masalan: 6 8). O'chirish uchun: off"
+PANEL_FLOODLIMIT_HEADER = "Flood chegarasi: {status}"
+
+PANEL_ASK_ANTIRAID = "Chegarani yozing: odam_soni soniya (masalan: 5 60). O'chirish uchun: off"
+PANEL_ANTIRAID_HEADER = "Anti-raid: {status}"
+
+PANEL_ASK_NIGHTMODE = "Vaqtni yozing: boshlanish-tugash (masalan: 23-7). O'chirish uchun: off"
+PANEL_NIGHTMODE_HEADER = "Tungi rejim: {status}"
+
+PANEL_LINKWHITELIST_HEADER = "Ruxsat etilgan domenlar (bosib o'chirasiz):"
+PANEL_LINKWHITELIST_EMPTY = "Hozircha domen yo'q."
+PANEL_ASK_LINKWHITELIST = "Domen nomini yozing (masalan: youtube.com):"
+
+PANEL_ASK_WARNEXPIRY = "Necha kundan keyin ogohlantirish muddati tugashini yozing. O'chirish uchun: 0"
+PANEL_WARNEXPIRY_HEADER = "Ogohlantirish muddati: {status}"
+
+PANEL_ASK_TEXTCAPTCHA = "Savol va javobni yozing: savol | javob. O'chirish uchun: off"
+PANEL_TEXTCAPTCHA_HEADER = "Matn-captcha: {status}"
+
+PANEL_ASK_AUTODELETE = "Necha soniyadan keyin javoblar o'chirilishini yozing. O'chirish uchun: 0"
+PANEL_AUTODELETE_HEADER = "Avto o'chirish: {status}"
+
+PANEL_SILENTMODE_HEADER = "Silent rejim: {status}"
+
+PANEL_VIP_HEADER = "VIP a'zolar (bosib olib tashlaysiz):"
+PANEL_VIP_EMPTY = "Hozircha VIP yo'q."
+PANEL_ASK_VIP = "Qo'shmoqchi bo'lgan odamning username yoki ID'sini yozing:"
+
+PANEL_MODERATORS_HEADER = "Moderatorlar (bosib olib tashlaysiz):"
+PANEL_MODERATORS_EMPTY = "Hozircha moderator yo'q."
+PANEL_ASK_MODERATOR = "Qo'shmoqchi bo'lgan odamning username yoki ID'sini yozing:"
+
+PANEL_SCHEDULE_HEADER = "Rejalashtirilgan xabarlar (bosib o'chirasiz):"
+PANEL_SCHEDULE_EMPTY = "Hozircha rejalashtirilgan xabar yo'q."
+PANEL_ASK_SCHEDULE = "Vaqt va matnni yozing: soat:daqiqa matn (masalan: 09:00 Xayrli tong!)"
+
+PANEL_ASK_DAILYREPORT = "Qaysi soatda (0-23) kunlik hisobot yuborilsinligini yozing. O'chirish uchun: off"
+PANEL_DAILYREPORT_HEADER = "Kunlik hisobot: {status}"
+
+PANEL_STATUS_ON = "yoqilgan"
+PANEL_STATUS_OFF = "o'chirilgan"
+
+PANEL_LANGUAGE_HEADER = "Tilni tanlang:"
+PANEL_LANGUAGE_SET = "Til o'zgartirildi."
+PANEL_STATS_HEADER = "<b>Guruh statistikasi</b>"
+
 PANEL_OPEN_BUTTON = "Sozlash panelini ochish"
 PANEL_ONBOARDING_DM = (
     "Rahmat, meni \"{chat_title}\" guruhiga qo'shdingiz. Endi guruhni "
@@ -825,6 +916,152 @@ PANEL_ONBOARDING_GROUP_FALLBACK = (
     "Shundan keyin pastdagi tugma orqali to'g'ridan-to'g'ri shu guruh "
     "paneliga o'tkazib yuboraman."
 )
+
+# ------------------------------------------------------------------
+# Qo'shimcha BEPUL funksiyalar (handlers/extras.py)
+# ------------------------------------------------------------------
+
+LANGUAGE_USAGE = "Shunday yozing: /language uz yoki /language ru"
+LANGUAGE_SET_UZ = "Til o'zbekchaga o'rnatildi."
+LANGUAGE_SET_RU = "Язык изменён на русский."
+
+PIN_USAGE = "Pin qilish uchun xabarga reply qilib /pin deb yozing."
+PIN_DONE = "Xabar pin qilindi."
+UNPIN_DONE = "Pin bekor qilindi."
+
+PURGE_USAGE = (
+    "O'chirishni boshlaydigan xabarga reply qilib /purge deb yozing - "
+    "shu xabardan hozirgi xabargacha bo'lgan hammasi o'chadi."
+)
+PURGE_TOO_MANY = "Bir marotabada {limit} tadan ortiq xabar o'chirib bo'lmaydi-a, kamroq oralig'ini tanlang."
+PURGE_DONE = "{count} ta xabar o'chirildi."
+
+ID_RESULT = "Guruh ID: <code>{chat_id}</code>\nFoydalanuvchi ID: <code>{user_id}</code>"
+
+MYWARNS_RESULT = "Sizda {count}/{max_warns} ta ogohlantirish bor."
+
+SLOWMODE_USAGE = "Shunday yozing: /slowmode 10 (soniyada) yoki /slowmode off"
+SLOWMODE_ON = "Yumshoq tezlik cheklovi yoqildi: {seconds} soniyada bir marta yozish mumkin."
+SLOWMODE_OFF = "Tezlik cheklovi o'chirildi."
+
+BADWORD_USAGE = "Shunday yozing: /badword so'z"
+BADWORD_ADDED = "\"{word}\" taqiqlangan so'zlar ro'yxatiga qo'shildi."
+BADWORD_REMOVED = "\"{word}\" ro'yxatdan olib tashlandi."
+BADWORD_NOT_FOUND = "Bunday so'z ro'yxatda yo'q ekan."
+BADWORDS_EMPTY = "Hozircha taqiqlangan so'z yo'q."
+BADWORDS_HEADER = "Taqiqlangan so'zlar:"
+BADWORD_REMOVED_NOTICE = "{mention}, bu so'zni bu yerda ishlatib bo'lmaydi, xabaringizni o'chirdim."
+
+STATS_RESULT = (
+    "Guruh statistikasi (so'nggi 7 kun):\n"
+    "Ko'rilgan a'zolar: {members}\n"
+    "Ban: {ban}\n"
+    "Mute: {mute}\n"
+    "Warn: {warn}\n"
+    "Kick: {kick}"
+)
+TOPWARNS_HEADER = "Eng ko'p ogohlantirilganlar (so'nggi 30 kun):"
+TOPWARNS_EMPTY = "So'nggi 30 kunda hech kimga ogohlantirish berilmagan."
+
+INVITE_RESULT = "Guruhga taklif havolasi:\n{link}"
+
+FEEDBACK_USAGE = "Fikringizni yozing: /feedback matn"
+FEEDBACK_SENT = "Rahmat, fikringiz bot egasiga yuborildi."
+FEEDBACK_FAILED = "Kechirasiz, hozir yuborib bo'lmadi, keyinroq urinib ko'ring."
+FEEDBACK_FORWARDED = "Fikr-mulohaza:\nKimdan: {sender}\nGuruh: {chat}\n\n{text}"
+
+PANEL_CANCELLED = "Bekor qilindi."
+
+# ------------------------------------------------------------------
+# Qo'shimcha PREMIUM funksiyalar (handlers/premium_extras.py)
+# ------------------------------------------------------------------
+
+WARNACTION_USAGE = "Shunday yozing: /setwarnaction ban yoki /setwarnaction mute"
+WARNACTION_SET = "Limit to'lganda endi \"{action}\" qilinadi."
+WARNACTION_REQUIRES_PREMIUM = "Bu sozlama - premium funksiya."
+
+NIGHTMODE_USAGE = "Shunday yozing: /nightmode 23-7 (23:00 dan 07:00 gacha) yoki /nightmode off"
+NIGHTMODE_ON = "Tungi rejim yoqildi: {start}:00 - {end}:00 orasida guruh avtomatik yopiladi."
+NIGHTMODE_OFF = "Tungi rejim o'chirildi."
+NIGHTMODE_REQUIRES_PREMIUM = "Tungi rejim - premium funksiya."
+NIGHTMODE_ACTIVE_NOTICE = "Hozir tungi rejim faol, ertalab {end}:00 da ochiladi. Xayrli tun!"
+
+FLOODLIMIT_USAGE = "Shunday yozing: /floodlimit 6 8 (6 xabar / 8 soniya) yoki /floodlimit off"
+FLOODLIMIT_SET = "Flood chegarasi o'rnatildi: {limit} xabar / {window} soniya."
+FLOODLIMIT_OFF = "Guruhga xos flood chegarasi o'chirildi, standart qiymat ishlatiladi."
+FLOODLIMIT_REQUIRES_PREMIUM = "Flood chegarasini moslashtirish - premium funksiya."
+
+WARNEXPIRY_USAGE = "Shunday yozing: /warnexpiry 30 (kun) yoki /warnexpiry off"
+WARNEXPIRY_SET = "Ogohlantirishlar endi {days} kundan keyin muddati tugaydi."
+WARNEXPIRY_OFF = "Ogohlantirish muddati cheksiz qilib qo'yildi."
+WARNEXPIRY_REQUIRES_PREMIUM = "Ogohlantirish muddatini sozlash - premium funksiya."
+
+TEXTCAPTCHA_USAGE = "Shunday yozing: /textcaptcha savol | javob"
+TEXTCAPTCHA_SET = "Matn-captcha o'rnatildi. Endi yangi a'zolar shu savolga javob berishi kerak."
+TEXTCAPTCHA_OFF = "Matn-captcha o'chirildi, oddiy tugmali captcha'ga qaytdi."
+TEXTCAPTCHA_REQUIRES_PREMIUM = "Matn-captcha - premium funksiya."
+
+AUTODELETE_USAGE = "Shunday yozing: /autodelete 30 (soniya) yoki /autodelete off"
+AUTODELETE_SET = "Filtr/eslatma/personal javoblari endi {seconds} soniyadan keyin o'chadi."
+AUTODELETE_OFF = "Avtomatik o'chirish rejimi o'chirildi."
+AUTODELETE_REQUIRES_PREMIUM = "Javoblarni avtomatik o'chirish - premium funksiya."
+
+SILENTMODE_ON = "Silent rejim yoqildi: endi admin buyruqlarining o'zi ham o'chiriladi."
+SILENTMODE_OFF = "Silent rejim o'chirildi."
+SILENTMODE_REQUIRES_PREMIUM = "Silent rejim - premium funksiya."
+
+AUTOPIN_ON = "Xush kelibsiz xabarlari endi avtomatik pin qilinadi."
+AUTOPIN_OFF = "Avtomatik pin o'chirildi."
+AUTOPIN_REQUIRES_PREMIUM = "Avtomatik pin - premium funksiya."
+
+ANTIRAID_USAGE = "Shunday yozing: /antiraid 5 60 (5 kishi / 60 soniya) yoki /antiraid off"
+ANTIRAID_ON = "Anti-raid yoqildi: {threshold} kishi {window} soniyada qo'shilsa, guruh avtomatik yopiladi."
+ANTIRAID_OFF = "Anti-raid o'chirildi."
+ANTIRAID_REQUIRES_PREMIUM = "Anti-raid himoyasi - premium funksiya."
+ANTIRAID_TRIGGERED = (
+    "Diqqat: qisqa vaqt ichida juda ko'p odam qo'shildi (ehtimol reyd) - "
+    "guruhni vaqtincha yopdim (hamma narsa taqiqlandi). Tinchlanganda "
+    "/unlock all deb ochib qo'yasiz."
+)
+
+VIP_USAGE = "Shunday yozing: reply qilib /vip yoki /vip @username"
+VIP_ADDED = "{target} endi VIP - warn/flood cheklovlaridan ozod."
+VIP_REMOVED = "{target} VIP ro'yxatidan olib tashlandi."
+VIP_LIST_HEADER = "VIP foydalanuvchilar:"
+VIP_LIST_EMPTY = "Hozircha VIP yo'q."
+VIP_REQUIRES_PREMIUM = "VIP funksiyasi - premium."
+VIP_PROTECTED = "Bu odam VIP ekan, unga ban/mute/warn qilib bo'lmaydi."
+
+MODERATOR_USAGE = "Shunday yozing: reply qilib /addmod yoki /addmod @username"
+MODERATOR_ADDED = "{target} endi kichik-admin (moderator): warn/mute qila oladi, ban/kick qila olmaydi."
+MODERATOR_REMOVED = "{target} moderatorlikdan olindi."
+MODERATOR_LIST_HEADER = "Moderatorlar:"
+MODERATOR_LIST_EMPTY = "Hozircha moderator yo'q."
+MODERATOR_REQUIRES_PREMIUM = "Moderator qo'shish - premium funksiya."
+
+SCHEDULE_USAGE = "Shunday yozing: /schedule 09:00 matn"
+SCHEDULE_ADDED = "Xo'p, har kuni {time} da shu xabarni yuboraman."
+SCHEDULE_LIST_HEADER = "Rejalashtirilgan xabarlar:"
+SCHEDULE_LIST_EMPTY = "Hozircha rejalashtirilgan xabar yo'q."
+SCHEDULE_REMOVED = "Rejalashtirilgan xabar o'chirildi."
+SCHEDULE_NOT_FOUND = "Bunday raqamli xabar topilmadi."
+SCHEDULE_REQUIRES_PREMIUM = "Rejalashtirilgan xabarlar - premium funksiya."
+
+LINKWHITELIST_USAGE = "Shunday yozing: /allowlink domen.com"
+LINKWHITELIST_ADDED = "\"{domain}\" endi taqiqlanmaydi (link qulfi yoqilgan bo'lsa ham)."
+LINKWHITELIST_REMOVED = "\"{domain}\" oq ro'yxatdan olib tashlandi."
+LINKWHITELIST_HEADER = "Ruxsat etilgan domenlar:"
+LINKWHITELIST_EMPTY = "Hozircha oq ro'yxatda domen yo'q."
+LINKWHITELIST_REQUIRES_PREMIUM = "Havola oq ro'yxati - premium funksiya."
+
+DAILYREPORT_USAGE = "Shunday yozing: /dailyreport 09 (soat) yoki /dailyreport off"
+DAILYREPORT_ON = "Har kuni soat {hour}:00 da hisobotni shu DM'ga yuboraman."
+DAILYREPORT_OFF = "Kunlik avtomatik hisobot o'chirildi."
+DAILYREPORT_REQUIRES_PREMIUM = "Kunlik avtomatik hisobot - premium funksiya."
+
+BACKUP_GENERATING = "Zaxira nusxa tayyorlanyapti..."
+BACKUP_CAPTION = "Guruh sozlamalari zaxira nusxasi (JSON)."
+BACKUP_REQUIRES_PREMIUM = "Zaxira nusxa olish - premium funksiya."
 
 AUTOAPPROVE_USAGE = "Shunday yozing: /autoapprove on yoki /autoapprove off"
 AUTOAPPROVE_ON = (

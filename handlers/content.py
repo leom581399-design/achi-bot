@@ -23,10 +23,10 @@ router = Router(name="content")
 # Command("...")) chaqiruvlaridan yig'ilgan.
 RESERVED_COMMAND_NAMES = frozenset(
     {
-        "start", "help",
+        "start", "help", "panel", "cancel",
         "ban", "tban", "unban", "mute", "tmute", "unmute", "kick",
         "warn", "unwarn", "warns",
-        "lock", "unlock", "locks",
+        "lock", "unlock", "locks", "aimod",
         "setwelcome", "setgoodbye", "cleanservice", "captcha", "autoapprove",
         "filter", "stopfilter", "filters",
         "personal", "stoppersonal", "personallist",
@@ -36,6 +36,16 @@ RESERVED_COMMAND_NAMES = frozenset(
         "premium", "grantpremium", "broadcast", "premiumber",
         "fnew", "fjoin", "fleave", "finfo", "fban", "funban", "fed", "federation",
         "adminber", "adminol", "tag", "staff", "achi", "info",
+        # Task #4: bepul qo'shimcha funksiyalar (handlers/extras.py)
+        "language", "pin", "unpin", "purge", "id", "mywarns", "slowmode",
+        "badword", "unbadword", "badwords", "stats", "topwarns", "invite",
+        "feedback",
+        # Task #5: premium qo'shimcha funksiyalar (handlers/premium_extras.py)
+        "setwarnaction", "nightmode", "floodlimit", "warnexpiry",
+        "textcaptcha", "autodelete", "silentmode", "autopin", "antiraid",
+        "vip", "unvip", "viplist", "addmod", "removemod", "modlist",
+        "schedule", "schedulelist", "unschedule", "allowlink", "unallowlink",
+        "allowlinks", "dailyreport", "backup",
     }
 )
 

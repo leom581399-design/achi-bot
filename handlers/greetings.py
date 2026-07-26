@@ -214,7 +214,26 @@ async def on_new_members(message: Message, bot: Bot) -> None:
             )
         else:
             text = welcome_text.format(mention=mention) if welcome_text else texts.DEFAULT_WELCOME.format(mention=mention)
-            await message.answer(text)
+            welcome_msg = await message.answer(text)
+            # Premium: /autopin yoqilgan bo'lsa, xush kelibsiz xabari
+            # avtomatik pin qilinadi.
+            if settings_row and settings_row["auto_pin_welcome"]:
+                try:
+                    await bot.pin_chat_message(message.chat.id, welcome_msg.message_id)
+                except Exception:
+                    pass
+
+    # Premium: anti-raid - qisqa vaqt ichida ko'p odam qo'shilishini
+    # kuzatadi, chegaraga yetsa guruhni avtomatik yopadi.
+    try:
+        from handlers.premium_extras import check_anti_raid
+
+        for _ in message.new_chat_members:
+            triggered = await check_anti_raid(message.chat.id, bot)
+            if triggered:
+                break
+    except Exception:
+        pass
 
     if clean_service:
         try:

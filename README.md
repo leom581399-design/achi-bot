@@ -95,6 +95,37 @@ Repo Railway uchun tayyor (`Dockerfile` + `railway.json` bilan). Qadamlar:
    HTTP so'rov kutmaydi — shu sabab Railway'da "Public Networking"
    (domain) yoqish shart emas.
 
+## 🎨 Render'ga deploy qilish
+
+Render'da **"Background Worker"** turini tanlash tavsiya etiladi (bot
+HTTP server emas). Agar **"Web Service"** turini tanlagan bo'lsangiz
+ham muammo emas — repo shunga ham moslashtirilgan:
+
+1. [render.com](https://render.com)da **New → Web Service** (yoki
+   **Background Worker**) → GitHub repongizni ulang.
+2. **Runtime:** Docker (Render `Dockerfile`ni avtomatik topadi).
+3. **Environment Variables** bo'limida qo'shing:
+   - `TELEGRAM_BOT_TOKEN` — @BotFather tokeningiz
+   - `OWNER_IDS` — `8539436212`
+   - Postgres qo'shsangiz (**New → PostgreSQL**), Render avtomatik
+     yaratgan "Internal Database URL"ni nusxalab, `DATABASE_URL`
+     nomida qo'shing.
+4. **"Web Service" tanlagan bo'lsangiz:** Render sizdan portni so'raydi
+   yoki avtomatik `$PORT`ni beradi — bu haqida qo'shimcha sozlash shart
+   emas, `docker-entrypoint.sh` buni o'zi avtomatik o'qiydi va bot bilan
+   bir vaqtda juda kichik "sog'lom" javob beruvchi server ishga
+   tushiradi (Render shu orqali servisni "tirik" deb biladi).
+5. Deploy tugagach, **Logs**da `✅ Bot started: @...` xabarini
+   ko'rishingiz kerak.
+
+**Eslatma:** Render'ning **bepul** reja (Free tier)dagi Web Service'lari
+odatda ~15 daqiqa harakatsiz qolgandan keyin "uxlab qoladi" va keyingi
+so'rovda qayta uyg'onadi. Bizning holatda health-check serveri Render
+tomonidan ichkarida davriy tekshirilib turadi, shu sabab odatda uxlab
+qolmaydi — lekin agar shunday muammo sezsangiz, Render'ning to'lovli
+"Starter" rejasiga o'tish yoki **Background Worker** turini tanlash
+uzluksizlikni kafolatlaydi.
+
 ## 📁 Loyiha strukturasi
 
 ```

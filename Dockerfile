@@ -1,8 +1,13 @@
-# ACHI BOT — Railway (va boshqa Docker asosidagi platformalar) uchun.
+# ACHI BOT — Railway, Render va boshqa Docker asosidagi platformalar
+# uchun.
 #
 # Bot uzluksiz ishlaydigan jarayon (long-polling, run.php) sifatida
-# ishlaydi — HTTP server emas, shu sabab bu "Worker" turidagi Railway
-# servisiga mos (railway.json'da healthcheck yo'q, shuning uchun).
+# ishlaydi — HTTP server emas. Lekin Render kabi ba'zi platformalar
+# "Web Service" turida doim biror $PORT'ni tinglashini kutadi - shu
+# sabab docker-entrypoint.sh orqali botni FONDA ishga tushiramiz va
+# bir vaqtda juda kichik "sog'lom" javob beruvchi HTTP server ham
+# qo'shamiz (Railway'da "Worker" turi tanlansa, $PORT ishlatilmaydi -
+# lekin health-check serveri baribir zararsiz ishlab turadi).
 FROM php:8.2-cli
 
 # Kerakli PHP extensionlar:
@@ -35,6 +40,9 @@ COPY . .
 # fayllari uchun — Postgres ishlatilsa ham cache/log kerak bo'ladi).
 RUN mkdir -p storage/cache logs && chmod -R 777 storage logs
 
-# Bot uzluksiz long-polling orqali ishlaydi (webhook emas) — shu sabab
-# oddiy CMD, PORT kerak emas.
-CMD ["php", "run.php"]
+RUN chmod +x docker-entrypoint.sh
+
+# entrypoint bot (php run.php) va sog'lomlik-serverini (php -S) PARALEL
+# ishga tushiradi - Render/Railway "Web Service" turida $PORT'ni
+# tinglash talab qilinsa ham, "Worker" turida esa buning zarari yo'q.
+CMD ["./docker-entrypoint.sh"]

@@ -69,6 +69,32 @@ shart emas, `modules/` papkasiga yangi papka qo'yish kifoya.
    foydalanuvchilarni ban qilish, xabarlarni o'chirish, a'zolarni taklif
    qilish huquqlari).
 
+## 🚂 Railway'ga deploy qilish
+
+Repo Railway uchun tayyor (`Dockerfile` + `railway.json` bilan). Qadamlar:
+
+1. [railway.app](https://railway.app)da hisob oching (GitHub orqali kirish tavsiya
+   etiladi — repo'ga ruxsat berish osonlashadi).
+2. **New Project → Deploy from GitHub repo** → `achi-bot` repongizni tanlang.
+   Railway `Dockerfile`ni avtomatik topib, shu orqali build qiladi.
+3. **Muhim:** SQLite fayli Railway'ning vaqtinchalik fayl tizimida har
+   qayta deploy qilinganda o'chib ketadi — shu sabab **Postgres qo'shish
+   tavsiya etiladi**: loyihaga **+ New → Database → PostgreSQL** qo'shing.
+   Railway avtomatik `DATABASE_URL` o'zgaruvchisini yaratadi va botga
+   ulaydi (kod buni allaqachon qo'llab-quvvatlaydi — qo'shimcha sozlash
+   kerak emas).
+4. Bot servisining **Variables** bo'limida quyidagilarni qo'shing:
+   - `TELEGRAM_BOT_TOKEN` — @BotFather'dan olingan token
+   - `OWNER_IDS` — `8539436212` (yoki o'zingiznikini kiriting)
+   - (Postgres qo'shgan bo'lsangiz, `DATABASE_URL` Railway tomonidan
+     avtomatik qo'shiladi — qo'lda kiritish kerak emas)
+5. Deploy tugagach, **Logs** bo'limida `✅ Bot started: @sizning_bot_username`
+   degan xabarni ko'rishingiz kerak — shu bot ishga tushgani va Telegram
+   bilan bog'langanini bildiradi.
+6. Bot **uzluksiz ishlaydigan jarayon** (long-polling) sifatida ishlaydi,
+   HTTP so'rov kutmaydi — shu sabab Railway'da "Public Networking"
+   (domain) yoqish shart emas.
+
 ## 📁 Loyiha strukturasi
 
 ```

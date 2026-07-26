@@ -1,0 +1,10 @@
+.git
+.env
+vendor/
+storage/*.sqlite
+storage/*.sqlite-shm
+storage/*.sqlite-wal
+storage/cache/*
+logs/*.log
+*.md
+docs/

@@ -1,6 +1,9 @@
+vendor/
 .env
-venv/
-__pycache__/
-*.pyc
-*.db
-reports/
+logs/*.log
+storage/cache/*.cache
+storage/*.sqlite
+storage/*.sqlite-shm
+storage/*.sqlite-wal
+*.DS_Store
+.phpunit.result.cache

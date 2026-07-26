@@ -1,0 +1,14 @@
+# Nega acesso direto a arquivos de configuração
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Protege a pasta pages/ — só pode ser incluída pelo index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^pages/ - [F,L]
+</IfModule>
+
+# Desativa listagem de diretório
+Options -Indexes

@@ -1,0 +1,20 @@
+<?php
+return [
+    'flood_warn'       => '⚠️ <b>:name</b>, devagar! Você está enviando mensagens rápido demais.',
+    'flooded'          => '🌊 <b>:name</b> foi :action por flood.',
+    'setflood_ok'      => '✅ Limite de flood definido para <b>:n</b> mensagens.',
+    'setflood_off'     => '✅ Anti-flood desativado.',
+    'setflood_invalid' => '❌ Informe um número inteiro (0 para desativar).',
+    'floodmode_ok'     => '✅ Ação de flood definida: <b>:action</b>.',
+    'floodmode_invalid'=> '❌ Ação inválida. Use: warn, mute, kick, ban, tban, tmute.',
+    'flood_status_off' => '📊 Anti-flood: <b>Desativado</b>',
+    'flood_status_on'  => "📊 Anti-flood: <b>Ativo</b>\n• Limite: <b>:limit</b> msgs/:window s\n• Ação: <b>:action</b>",
+    'action_kick'      => 'expulso',
+    'action_ban'       => 'banido',
+    'action_mute'      => 'silenciado',
+    'action_tban'      => 'banido temporariamente',
+    'action_tmute'     => 'silenciado temporariamente',
+    'action_warn'      => 'advertido',
+    'no_permission'    => '⛔ Você precisa ser administrador para usar este comando.',
+    'group_only'       => '⛔ Este comando só funciona em grupos.',
+];

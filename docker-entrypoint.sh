@@ -1,6 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 # ACHI BOT — Render (Web Service) va shunga o'xshash platformalar uchun
 # kirish nuqtasi.
+#
+# MUHIM: shebang aynan `bash` bo'lishi kerak (`sh` emas) - quyida
+# ishlatilgan `wait -n` bash'ga xos buyruq, POSIX `sh`da mavjud emas
+# ("Illegal option -n" xatosi shundan kelib chiqadi). php:8.2-cli
+# image'i Debian asosida bo'lgani uchun bash standart o'rnatilgan.
 #
 # Muammo: ACHI BOT HTTP server emas, u Telegram bilan faqat
 # long-polling orqali gaplashadi (php run.php - cheksiz sikl). Lekin

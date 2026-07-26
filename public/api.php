@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * API REST — Telegram Group Manager V15
+ * API REST — ACHI BOT
  * 
  * Este arquivo atua como o roteador principal para a API REST.
  * Autenticação via Header: Authorization: Bearer <seu_token>

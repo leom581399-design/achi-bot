@@ -20,7 +20,7 @@ class UnmuteCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'unmute'; }
-    public function getDescription(): string { return 'Remove o silêncio de um usuário'; }
+    public function getDescription(): string { return 'Foydalanuvchining ovozini qaytaradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

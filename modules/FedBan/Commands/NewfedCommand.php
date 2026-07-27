@@ -19,7 +19,7 @@ class NewfedCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'newfed'; }
-    public function getDescription(): string   { return 'Cria uma nova federação'; }
+    public function getDescription(): string   { return 'Yangi federatsiya yaratadi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

@@ -19,7 +19,7 @@ class ApprovalCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'approval'; }
-    public function getDescription(): string    { return 'Ativa ou desativa o modo de aprovação'; }
+    public function getDescription(): string    { return 'Tasdiqlash rejimini yoqadi/o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

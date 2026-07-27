@@ -19,7 +19,7 @@ class StopCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'stop'; }
-    public function getDescription(): string  { return 'Remove um filtro automático'; }
+    public function getDescription(): string  { return 'Avtomatik filtrni o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

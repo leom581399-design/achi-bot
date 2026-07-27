@@ -20,7 +20,7 @@ class WarnsCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'warns'; }
-    public function getDescription(): string { return 'Lista as advertências de um usuário'; }
+    public function getDescription(): string { return 'Foydalanuvchining ogohlantirishlari ro\'yxatini ko\'rsatadi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

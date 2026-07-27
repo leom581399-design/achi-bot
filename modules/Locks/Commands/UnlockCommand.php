@@ -20,7 +20,7 @@ class UnlockCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'unlock'; }
-    public function getDescription(): string  { return 'Remove o bloqueio de um tipo de mensagem'; }
+    public function getDescription(): string  { return 'Xabar turi qulfini olib tashlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

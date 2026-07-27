@@ -42,7 +42,7 @@ class NewMemberApproval
         $service->restrict($chatId, $userId);
 
         $lang = $this->app->make(LanguageService::class);
-        $name = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $name = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
         $text = $lang->trans('Approval.pending_join', [':name' => $name]);
         $text = str_replace('\n', "\n", $text);
 

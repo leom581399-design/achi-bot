@@ -22,7 +22,7 @@ class TbanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'tban'; }
-    public function getDescription(): string { return 'Bane um usuário temporariamente (ex: /tban 1d motivo)'; }
+    public function getDescription(): string { return 'Foydalanuvchini vaqtincha banlaydi (masalan: /tban 1d sabab)'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

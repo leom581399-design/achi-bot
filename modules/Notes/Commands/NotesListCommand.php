@@ -19,7 +19,7 @@ class NotesListCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'notes'; }
-    public function getDescription(): string { return 'Lista todas as notas do grupo'; }
+    public function getDescription(): string { return 'Guruhdagi barcha eslatmalarni ro\'yxatlaydi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

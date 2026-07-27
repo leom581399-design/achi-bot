@@ -19,12 +19,12 @@ enum Permission: int
     public function label(): string
     {
         return match($this) {
-            self::Owner         => '👑 Owner',
-            self::Developer     => '🛠️ Developer',
-            self::Administrator => '⚙️ Administrator',
+            self::Owner         => '👑 Bot egasi',
+            self::Developer     => "🛠️ Dasturchi",
+            self::Administrator => '⚙️ Admin',
             self::Moderator     => '🛡️ Moderator',
             self::VIP           => '⭐ VIP',
-            self::User          => '👤 User',
+            self::User          => '👤 Foydalanuvchi',
         };
     }
 

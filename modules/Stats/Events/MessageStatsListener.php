@@ -21,12 +21,12 @@ class MessageStatsListener
             $chatId = $update->getChatId();
             $userId = $update->getUserId();
 
-            // Só grupos e supergrupos
-            $chatType = $update->getRaw()['message']['chat']['type'] ?? '';
-            if (!in_array($chatType, ['group', 'supergroup'], true)) return;
+            // Faqat guruh va superguruhlar (Update::getRaw() mavjud emas -
+            // shu sabab mavjud isGroup() yordamchisi ishlatildi).
+            if (!$update->isGroup()) return;
 
-            // Ignorar bots
-            $isBot = $update->getRaw()['message']['from']['is_bot'] ?? false;
+            // Botlarni e'tiborsiz qoldirish
+            $isBot = $update->data['message']['from']['is_bot'] ?? false;
             if ($isBot) return;
 
             // Usuário e chat válidos

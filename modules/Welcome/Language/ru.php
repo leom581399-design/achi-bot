@@ -1,0 +1,20 @@
+<?php
+return [
+    'on'                    => '✅ Включено',
+    'off'                   => '❌ Отключено',
+    'usage'                 => "ℹ️ Использование: /welcome on|off|<сообщение>\nПеременные: {first} {last} {full} {username} {mention} {id} {count} {chatname}",
+    'usage_goodbye'         => "ℹ️ Использование: /goodbye on|off|<сообщение>\nПеременные: {first} {last} {full} {username} {mention} {id} {count} {chatname}",
+    'enabled'               => '✅ Приветственные сообщения включены.',
+    'disabled'              => '❌ Приветственные сообщения отключены.',
+    'message_set'           => '✅ Приветственное сообщение обновлено.',
+    'goodbye_enabled'       => '✅ Прощальные сообщения включены.',
+    'goodbye_disabled'      => '❌ Прощальные сообщения отключены.',
+    'goodbye_message_set'   => '✅ Прощальное сообщение обновлено.',
+    'cleanwelcome_on'       => '✅ CleanWelcome включён — предыдущее сообщение будет удалено.',
+    'cleanwelcome_off'      => '❌ CleanWelcome отключён.',
+    'cleanwelcome_usage'    => '❌ Использование: /cleanwelcome on|off',
+    'status'                => "👋 <b>Приветствие:</b> :status\n📝 Сообщение:\n<code>:message</code>",
+    'goodbye_status'        => "👋 <b>Прощание:</b> :status\n📝 Сообщение:\n<code>:message</code>",
+    'default_msg'           => '👋 Добро пожаловать, {mention}!\nВы участник #{count} группы {chatname}.',
+    'default_goodbye_msg'   => '👋 {mention} покинул(а) группу.',
+];

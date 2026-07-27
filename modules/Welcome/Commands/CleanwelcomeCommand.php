@@ -19,7 +19,7 @@ class CleanwelcomeCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'cleanwelcome'; }
-    public function getDescription(): string  { return 'Apaga a welcome anterior ao novo membro entrar'; }
+    public function getDescription(): string  { return 'Yangi a\'zo qo\'shilganda oldingi xush kelibsiz xabarini o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

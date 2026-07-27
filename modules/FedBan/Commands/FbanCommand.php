@@ -20,7 +20,7 @@ class FbanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'fban'; }
-    public function getDescription(): string   { return 'Bane um usuário em toda a federação'; }
+    public function getDescription(): string   { return 'Foydalanuvchini butun federatsiyada banlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

@@ -21,7 +21,7 @@ class AdminListCommand implements CommandInterface
     ) {}
 
     public function getCommand(): string     { return 'adminlist'; }
-    public function getDescription(): string { return 'List all group administrators'; }
+    public function getDescription(): string { return 'Guruhning barcha adminlarini ro\'yxatlaydi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array
@@ -44,7 +44,7 @@ class AdminListCommand implements CommandInterface
 
             foreach ($admins as $admin) {
                 $user   = $admin['user'];
-                $name   = htmlspecialchars($user['first_name'] ?? 'Unknown');
+                $name   = htmlspecialchars($user['first_name'] ?? "Noma'lum");
                 if (isset($user['last_name'])) {
                     $name .= ' ' . htmlspecialchars($user['last_name']);
                 }

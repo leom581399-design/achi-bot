@@ -20,7 +20,7 @@ class UnfbanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'unfban'; }
-    public function getDescription(): string   { return 'Remove o fedban de um usuário'; }
+    public function getDescription(): string   { return 'Foydalanuvchini federatsiya banidan chiqaradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

@@ -20,7 +20,7 @@ class UnwarnCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'unwarn'; }
-    public function getDescription(): string { return 'Remove a última advertência de um usuário'; }
+    public function getDescription(): string { return 'Foydalanuvchining oxirgi ogohlantirishini olib tashlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

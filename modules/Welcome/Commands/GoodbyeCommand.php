@@ -19,7 +19,7 @@ class GoodbyeCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'goodbye'; }
-    public function getDescription(): string  { return 'Configura a mensagem de despedida'; }
+    public function getDescription(): string  { return 'Xayrlashuv xabarini sozlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

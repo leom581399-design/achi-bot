@@ -19,7 +19,7 @@ class LockCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'lock'; }
-    public function getDescription(): string  { return 'Bloqueia um tipo de mensagem'; }
+    public function getDescription(): string  { return 'Xabar turini qulflaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

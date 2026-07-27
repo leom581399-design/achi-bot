@@ -16,4 +16,9 @@ return [
     'owner_ids' => $ownerIds,
     'debug' => false,
     'timezone' => 'Asia/Tashkent',
+    // Botning ASOSIY (standart) tili — o'zbek. Har bir guruh o'z tilini
+    // /til (yoki /language) buyrug'i orqali "ru"ga o'zgartirishi mumkin -
+    // bu holatda faqat shu guruh uchun rus tili ishlatiladi, boshqa
+    // guruhlar hech narsa sezmaydi.
+    'locale' => 'uz',
 ];

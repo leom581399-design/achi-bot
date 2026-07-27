@@ -1,0 +1,20 @@
+<?php
+return [
+    'flood_warn'       => '⚠️ <b>:name</b>, sekinroq yozing! Juda tez-tez xabar yuboryapsiz.',
+    'flooded'          => '🌊 <b>:name</b> flood qilgani uchun :action.',
+    'setflood_ok'      => '✅ Flood limiti <b>:n</b> ta xabarga o\'rnatildi.',
+    'setflood_off'     => '✅ Anti-flood o\'chirildi.',
+    'setflood_invalid' => '❌ Iltimos butun son kiriting (0 = o\'chirish).',
+    'floodmode_ok'     => '✅ Flood amali o\'rnatildi: <b>:action</b>.',
+    'floodmode_invalid'=> '❌ Noto\'g\'ri amal. Ishlatish mumkin: warn, mute, kick, ban, tban, tmute.',
+    'flood_status_off' => '📊 Anti-flood: <b>O\'chirilgan</b>',
+    'flood_status_on'  => "📊 Anti-flood: <b>Faol</b>\n• Limit: <b>:limit</b> xabar/:window soniya\n• Amal: <b>:action</b>",
+    'action_kick'      => 'chiqarildi',
+    'action_ban'       => 'banlandi',
+    'action_mute'      => 'ovozi o\'chirildi',
+    'action_tban'      => 'vaqtincha banlandi',
+    'action_tmute'     => 'vaqtincha ovozi o\'chirildi',
+    'action_warn'      => 'ogohlantirildi',
+    'no_permission'    => '⛔ Bu buyruqni ishlatish uchun admin bo\'lishingiz kerak.',
+    'group_only'       => '⛔ Bu buyruq faqat guruhlarda ishlaydi.',
+];

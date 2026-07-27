@@ -47,7 +47,7 @@ class WelcomeService
             try { $client->deleteMessage($chatId, $lastId); } catch (\Throwable) {}
         }
 
-        $defaultMsg = "👋 Bem-vindo(a), {mention}!\nVocê é o membro #{count} de {chatname}.";
+        $defaultMsg = "👋 Xush kelibsiz, {mention}!\nSiz {chatname} guruhining #{count}-a'zosisiz.";
         $template   = $settings->get($chatId, 'Welcome', 'welcome.message', default: $defaultMsg);
         $text       = $this->renderTemplate($template, $user, $chatId, $telegram);
 
@@ -67,7 +67,7 @@ class WelcomeService
         if (!$enabled) return;
 
         $telegram   = $this->app->make(TelegramService::class);
-        $defaultMsg = '👋 {mention} saiu do grupo.';
+        $defaultMsg = '👋 {mention} guruhdan chiqib ketdi.';
         $template   = $settings->get($chatId, 'Welcome', 'goodbye.message', default: $defaultMsg);
         $text       = $this->renderTemplate($template, $user, $chatId, $telegram);
 
@@ -123,7 +123,7 @@ class WelcomeService
 
     private function renderTemplate(string $template, array $user, int $chatId, TelegramService $telegram): string
     {
-        $firstName = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $firstName = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
         $lastName  = htmlspecialchars($user['last_name']  ?? '');
         $full      = trim("{$firstName} {$lastName}");
         $username  = isset($user['username']) ? '@' . $user['username'] : $full;

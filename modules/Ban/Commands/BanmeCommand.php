@@ -19,7 +19,7 @@ class BanmeCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'banme'; }
-    public function getDescription(): string { return 'Se auto-bane do grupo'; }
+    public function getDescription(): string { return 'O\'zini o\'zi guruhdan banlaydi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array
@@ -34,7 +34,7 @@ class BanmeCommand implements CommandInterface
         $chatId   = $update->getChatId();
         $userId   = $update->getUserId();
         $user     = $update->getFrom();
-        $name     = $user ? htmlspecialchars($user['first_name'] ?? 'Usuário') : 'Usuário';
+        $name     = $user ? htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi') : 'Foydalanuvchi';
 
         // Não permite auto-ban de admins
         if ($telegram->isAdmin($chatId, $userId)) {

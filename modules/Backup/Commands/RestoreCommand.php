@@ -23,7 +23,7 @@ class RestoreCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'restore'; }
-    public function getDescription(): string   { return 'Restaura as configurações do grupo a partir de um backup JSON'; }
+    public function getDescription(): string   { return 'JSON zaxira nusxadan guruh sozlamalarini qayta tiklaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array
@@ -66,13 +66,13 @@ class RestoreCommand implements CommandInterface
             $filePath = $fileInfo['file_path'] ?? null;
 
             if (!$filePath) {
-                throw new \RuntimeException('Não foi possível obter o arquivo.');
+                throw new \RuntimeException("Faylni Telegram'dan olib bo'lmadi.");
             }
 
             $json = $client->downloadFile($filePath);
 
             if ($json === false || $json === '') {
-                throw new \RuntimeException('Arquivo vazio ou ilegível.');
+                throw new \RuntimeException("Fayl bo'sh yoki o'qib bo'lmaydi.");
             }
 
             $stats = $service->import($chatId, $json);
@@ -104,7 +104,10 @@ class RestoreCommand implements CommandInterface
      */
     private function findDocument(Update $update): ?array
     {
-        $raw = $update->getRaw();
+        // Update::getRaw() mavjud emas — bevosita $update->data (public
+        // readonly) ishlatiladi, u xuddi shu xom Telegram payloadini
+        // saqlaydi.
+        $raw = $update->data;
 
         // Mensagem atual
         $doc = $raw['message']['document'] ?? null;

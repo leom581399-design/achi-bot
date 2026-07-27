@@ -20,7 +20,7 @@ class KickCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'kick'; }
-    public function getDescription(): string { return 'Expulsa um usuário do grupo'; }
+    public function getDescription(): string { return 'Foydalanuvchini guruhdan chiqarib yuboradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

@@ -19,7 +19,7 @@ class ReportCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'report'; }
-    public function getDescription(): string  { return 'Reporta uma mensagem para os admins'; }
+    public function getDescription(): string  { return 'Xabarni adminlarga shikoyat qiladi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array
@@ -66,7 +66,7 @@ class ReportCommand implements CommandInterface
         }
 
         $reporter     = $update->getUser();
-        $reporterName = $telegram->formatUser($reporter ?? ['first_name' => 'Usuário']);
+        $reporterName = $telegram->formatUser($reporter ?? ['first_name' => 'Foydalanuvchi']);
         $reportedName = $telegram->formatUser($reportedUser);
 
         // Obtém link para a mensagem reportada (apenas em supergrupos)

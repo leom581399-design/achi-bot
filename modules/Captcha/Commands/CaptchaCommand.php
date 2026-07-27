@@ -21,7 +21,7 @@ class CaptchaCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'captcha'; }
-    public function getDescription(): string    { return 'Configura o captcha para novos membros'; }
+    public function getDescription(): string    { return 'Yangi a\'zolar uchun captcha sozlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

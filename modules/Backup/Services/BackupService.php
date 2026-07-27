@@ -146,15 +146,15 @@ class BackupService
     private function validate(mixed $data): void
     {
         if (!is_array($data)) {
-            throw new \InvalidArgumentException('Arquivo de backup inválido.');
+            throw new \InvalidArgumentException("Yaroqsiz zaxira fayli.");
         }
         if (!isset($data['version']) || (int)$data['version'] !== self::VERSION) {
             throw new \InvalidArgumentException(
-                'Versão do backup incompatível. Esperado: ' . self::VERSION
+                "Zaxira versiyasi mos emas. Kutilgan versiya: " . self::VERSION
             );
         }
         if (!isset($data['chat_id'])) {
-            throw new \InvalidArgumentException('Backup sem chat_id — arquivo corrompido.');
+            throw new \InvalidArgumentException("Zaxirada chat_id yo'q — fayl buzilgan.");
         }
     }
 

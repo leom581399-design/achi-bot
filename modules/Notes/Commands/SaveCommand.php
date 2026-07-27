@@ -20,7 +20,7 @@ class SaveCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'save'; }
-    public function getDescription(): string { return 'Salva uma nota do grupo (/save nome conteúdo)'; }
+    public function getDescription(): string { return 'Guruh eslatmasini saqlaydi (/save nom matn)'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

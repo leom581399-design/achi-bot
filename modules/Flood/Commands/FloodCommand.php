@@ -19,7 +19,7 @@ class FloodCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'flood'; }
-    public function getDescription(): string    { return 'Exibe as configurações de anti-flood'; }
+    public function getDescription(): string    { return 'Anti-flood sozlamalarini ko\'rsatadi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

@@ -19,7 +19,7 @@ class SetrulesCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'setrules'; }
-    public function getDescription(): string  { return 'Define as regras do grupo'; }
+    public function getDescription(): string  { return 'Guruh qoidalarini belgilaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

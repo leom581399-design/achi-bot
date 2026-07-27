@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
-use App\Core\Services\LoggerService;
+use App\Core\Services\{LanguageService, LoggerService, SettingsService};
 
 /**
  * Routes incoming Telegram updates to the right handler.
@@ -19,6 +19,8 @@ class Router
 
     public function dispatch(Update $update): void
     {
+        $this->applyChatLocale($update);
+
         $dispatcher = $this->app->make(EventDispatcher::class);
         $registry   = $this->app->make(CommandRegistry::class);
         $logger     = $this->app->make(LoggerService::class);
@@ -71,5 +73,37 @@ class Router
             $dispatcher->emit('command.after', ['command' => $cmd, 'update' => $update]);
             $dispatcher->emit('command.executed', ['command' => $cmd, 'update' => $update]);
         }
+    }
+
+    /**
+     * Har bir update kelganda, shu guruh (chat) uchun /til orqali
+     * tanlangan tilni SettingsService'dan o'qib, LanguageService'ga
+     * o'rnatadi. Shu bilan bitta bot bir vaqtning o'zida turli
+     * guruhlarda turli tillarda (uz/ru) javob beradi - hech qanday
+     * global holat qolmaydi, har so'rov o'zining tilini o'z ichida
+     * olib yuradi.
+     *
+     * Shaxsiy (private) chatlarda chat_id foydalanuvchi ID'siga teng
+     * bo'ladi - u holatda ham xuddi shu mexanizm ishlaydi (har kim
+     * o'zi uchun /til bilan tilni tanlashi mumkin).
+     */
+    private function applyChatLocale(Update $update): void
+    {
+        $chatId = $update->getChatId();
+        $lang   = $this->app->make(LanguageService::class);
+
+        if ($chatId === null) {
+            $lang->setLocale(LanguageService::FALLBACK_LOCALE);
+            return;
+        }
+
+        try {
+            $settings = $this->app->make(SettingsService::class);
+            $locale   = $settings->get($chatId, 'Language', 'locale', LanguageService::FALLBACK_LOCALE);
+        } catch (\Throwable) {
+            $locale = LanguageService::FALLBACK_LOCALE;
+        }
+
+        $lang->setLocale($locale);
     }
 }

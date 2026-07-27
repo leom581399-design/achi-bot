@@ -19,7 +19,7 @@ class StatsCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'stats'; }
-    public function getDescription(): string   { return 'Estatísticas do grupo'; }
+    public function getDescription(): string   { return 'Guruh statistikasi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

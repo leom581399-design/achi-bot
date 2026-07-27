@@ -7,13 +7,13 @@ use App\Core\Application;
 use App\Core\Contracts\CommandInterface;
 use App\Core\Middleware\{GroupOnlyMiddleware, PermissionMiddleware};
 use App\Core\Permission;
-use App\Core\Services\TelegramService;
+use App\Core\Services\{LanguageService, TelegramService};
 use App\Core\Telegram\TelegramClient;
 use App\Core\Update;
 
 /**
- * /unpin — Unpins the most recent pinned message (or the replied-to one).
- * Requires Administrator permission.
+ * /unpin — Eng oxirgi qadalgan xabarni (yoki reply qilinganini) qadaqdan oladi.
+ * Administrator ruxsati talab qilinadi.
  */
 class UnpinCommand implements CommandInterface
 {
@@ -22,7 +22,7 @@ class UnpinCommand implements CommandInterface
     ) {}
 
     public function getCommand(): string     { return 'unpin'; }
-    public function getDescription(): string { return 'Unpin the current/replied pinned message'; }
+    public function getDescription(): string { return 'Qadalgan xabarni qadaqdan oladi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array
@@ -36,6 +36,7 @@ class UnpinCommand implements CommandInterface
     public function handle(Update $update, Application $app): void
     {
         $telegram = $app->make(TelegramService::class);
+        $lang     = $app->make(LanguageService::class);
         $client   = $app->make(TelegramClient::class);
         $reply    = $update->getReplyToMessage();
 
@@ -45,9 +46,9 @@ class UnpinCommand implements CommandInterface
                 $params['message_id'] = $reply['message_id'];
             }
             $client->request('unpinChatMessage', $params);
-            $telegram->reply($update, '📌 Message unpinned.');
+            $telegram->reply($update, $lang->trans('Admin.unpin_success'));
         } catch (\Throwable) {
-            $telegram->reply($update, '❌ Failed to unpin. Make sure I have pin permissions.');
+            $telegram->reply($update, $lang->trans('Admin.unpin_fail'));
         }
     }
 }

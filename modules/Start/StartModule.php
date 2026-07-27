@@ -22,5 +22,10 @@ class StartModule implements ModuleInterface
         return [new StartCommand($this->app)];
     }
 
-    public function getEvents(): array { return []; }
+    public function getEvents(): array
+    {
+        return [
+            'callback.received' => [new Events\StartCallbackListener($this->app)],
+        ];
+    }
 }

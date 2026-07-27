@@ -38,7 +38,7 @@ class PermissionMiddleware implements MiddlewareInterface
         if (!$permService->can($chatId, $userId, $this->required)) {
             $this->app->make(TelegramService::class)->reply(
                 $update,
-                "⛔ <b>Permission denied.</b>\nYou need at least <b>{$this->required->label()}</b> to use this command."
+                "⛔ <b>Ruxsat yo'q.</b>\nBu buyruqni ishlatish uchun kamida <b>{$this->required->label()}</b> darajasi kerak."
             );
             return null;
         }

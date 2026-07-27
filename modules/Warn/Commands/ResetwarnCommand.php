@@ -20,7 +20,7 @@ class ResetwarnCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'resetwarn'; }
-    public function getDescription(): string { return 'Remove todas as advertências de um usuário'; }
+    public function getDescription(): string { return 'Foydalanuvchining barcha ogohlantirishlarini tozalaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

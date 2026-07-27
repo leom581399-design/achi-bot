@@ -21,7 +21,7 @@ class BanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'ban'; }
-    public function getDescription(): string { return 'Bane um usuário permanentemente'; }
+    public function getDescription(): string { return 'Foydalanuvchini abadiy banlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

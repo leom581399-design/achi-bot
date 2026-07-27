@@ -19,7 +19,7 @@ class LocksCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'locks'; }
-    public function getDescription(): string  { return 'Lista os bloqueios ativos'; }
+    public function getDescription(): string  { return 'Faol qulflarni ro\'yxatlaydi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

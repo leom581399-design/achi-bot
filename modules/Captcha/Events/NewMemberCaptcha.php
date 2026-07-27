@@ -42,7 +42,7 @@ class NewMemberCaptcha
         $lang    = $this->app->make(LanguageService::class);
         $client  = $this->app->make(TelegramClient::class);
 
-        $name = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $name = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
 
         // Muta o usuário
         try {
@@ -98,7 +98,7 @@ class NewMemberCaptcha
 
     private function buildText(string $name, int $timeout, LanguageService $lang): array
     {
-        $words = ['gato','casa','verde','azul','livro','porta','carro','agua','terra','sol'];
+        $words = ['olma','uzum','tog\'','osmon','kitob','eshik','mashina','suv','yer','quyosh'];
         $word  = $words[array_rand($words)];
         $text  = $lang->trans('Captcha.captcha_text', [':name' => $name, ':timeout' => $timeout, ':word' => $word]);
         return [str_replace('\n', "\n", $text), $word, []];

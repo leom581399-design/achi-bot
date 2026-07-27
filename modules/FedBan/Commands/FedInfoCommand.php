@@ -19,7 +19,7 @@ class FedInfoCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'fedinfo'; }
-    public function getDescription(): string   { return 'Informações da federação do grupo'; }
+    public function getDescription(): string   { return 'Guruh federatsiyasi haqida ma\'lumot'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

@@ -22,7 +22,7 @@ class SetfloodmodeCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'setfloodmode'; }
-    public function getDescription(): string    { return 'Define a ação do anti-flood'; }
+    public function getDescription(): string    { return 'Flood limitiga yetganda bajariladigan amalni belgilaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

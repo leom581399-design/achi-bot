@@ -23,7 +23,7 @@ class BackupCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'backup'; }
-    public function getDescription(): string   { return 'Exporta as configurações do grupo para JSON'; }
+    public function getDescription(): string   { return 'Guruh sozlamalarini JSON formatida eksport qiladi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

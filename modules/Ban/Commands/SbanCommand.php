@@ -22,7 +22,7 @@ class SbanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'sban'; }
-    public function getDescription(): string { return 'Bane silenciosamente (sem notificação)'; }
+    public function getDescription(): string { return 'Sokin (bildirishnomasiz) banlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

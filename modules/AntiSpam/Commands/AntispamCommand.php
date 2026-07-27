@@ -19,7 +19,7 @@ class AntispamCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'antispam'; }
-    public function getDescription(): string    { return 'Ativa ou desativa o anti-spam'; }
+    public function getDescription(): string    { return 'Anti-spamni yoqadi/o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

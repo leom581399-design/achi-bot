@@ -19,7 +19,7 @@ class SetfloodCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'setflood'; }
-    public function getDescription(): string    { return 'Define o limite de flood'; }
+    public function getDescription(): string    { return 'Flood chegarasini o\'rnatadi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

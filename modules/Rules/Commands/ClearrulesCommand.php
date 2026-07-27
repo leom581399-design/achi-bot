@@ -18,7 +18,7 @@ class ClearrulesCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'clearrules'; }
-    public function getDescription(): string  { return 'Remove as regras do grupo'; }
+    public function getDescription(): string  { return 'Guruh qoidalarini o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

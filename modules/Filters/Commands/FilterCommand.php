@@ -20,7 +20,7 @@ class FilterCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'filter'; }
-    public function getDescription(): string  { return 'Cria um filtro automático de palavra-chave'; }
+    public function getDescription(): string  { return 'Avtomatik kalit-so\'z filtri yaratadi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

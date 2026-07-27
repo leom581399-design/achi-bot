@@ -41,7 +41,7 @@ class CasChecker
 
         if (!$detector->isCasBanned($userId)) return;
 
-        $name = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $name = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
         $lang = $this->app->make(LanguageService::class);
 
         $detector->banCasUser($chatId, $userId, $name);

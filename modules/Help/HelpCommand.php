@@ -20,7 +20,7 @@ class HelpCommand implements CommandInterface
     ) {}
 
     public function getCommand(): string     { return 'help'; }
-    public function getDescription(): string { return 'Show all available commands'; }
+    public function getDescription(): string { return 'Barcha mavjud buyruqlarni ko\'rsatadi'; }
     public function getPermission(): Permission { return Permission::User; }
     public function getMiddleware(): array   { return []; }
 
@@ -37,6 +37,19 @@ class HelpCommand implements CommandInterface
 
         $text .= "\n<i>Eslatma: moderatsiya buyruqlari ishlashi uchun meni guruhingizda admin qiling.</i>";
 
-        $app->make(TelegramService::class)->reply($update, $text);
+        // Guruhda bo'lsa - tilni tezkor o'zgartirish tugmasi. Bosilganda
+        // LanguageCallbackListener "lang_menu" callback_data'sini qabul
+        // qilib, uz/ru tanlash tugmalarini ko'rsatadi (xuddi /til
+        // buyrug'i kabi).
+        $keyboard = null;
+        if ($update->isGroup()) {
+            $keyboard = ['inline_keyboard' => [[
+                ['text' => "🌐 Tilni o'zgartirish", 'callback_data' => 'lang_menu'],
+            ]]];
+        }
+
+        $app->make(TelegramService::class)->reply($update, $text, array_filter([
+            'reply_markup' => $keyboard,
+        ]));
     }
 }

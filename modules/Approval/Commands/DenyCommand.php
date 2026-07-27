@@ -20,7 +20,7 @@ class DenyCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'deny'; }
-    public function getDescription(): string    { return 'Nega e remove um membro aguardando aprovação'; }
+    public function getDescription(): string    { return 'Tasdiqlanishini kutayotgan a\'zoni rad etib chiqaradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

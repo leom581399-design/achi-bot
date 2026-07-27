@@ -83,7 +83,7 @@ class TelegramService
 
     public function mentionUser(array $user): string
     {
-        $name = htmlspecialchars($user['first_name'] ?? 'User');
+        $name = htmlspecialchars($user['first_name'] ?? "Foydalanuvchi");
         if (isset($user['last_name'])) {
             $name .= ' ' . htmlspecialchars($user['last_name']);
         }
@@ -94,7 +94,7 @@ class TelegramService
 
     public function formatUser(array $user): string
     {
-        $name = htmlspecialchars($user['first_name'] ?? 'Unknown');
+        $name = htmlspecialchars($user['first_name'] ?? "Noma'lum");
         if (isset($user['last_name'])) {
             $name .= ' ' . htmlspecialchars($user['last_name']);
         }

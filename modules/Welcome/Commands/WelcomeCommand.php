@@ -21,7 +21,7 @@ class WelcomeCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'welcome'; }
-    public function getDescription(): string  { return 'Configura a mensagem de boas-vindas'; }
+    public function getDescription(): string  { return 'Xush kelibsiz xabarini sozlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

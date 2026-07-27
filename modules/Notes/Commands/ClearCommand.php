@@ -19,7 +19,7 @@ class ClearCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'clear'; }
-    public function getDescription(): string { return 'Remove uma nota do grupo (/clear nome)'; }
+    public function getDescription(): string { return 'Guruh eslatmasini o\'chiradi (/clear nom)'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

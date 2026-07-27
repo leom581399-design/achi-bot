@@ -20,7 +20,7 @@ class ApproveCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'approve'; }
-    public function getDescription(): string    { return 'Aprova um membro aguardando aprovação'; }
+    public function getDescription(): string    { return 'Tasdiqlanishini kutayotgan a\'zoni tasdiqlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

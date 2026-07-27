@@ -19,7 +19,7 @@ class JoinfedCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'joinfed'; }
-    public function getDescription(): string   { return 'Vincula o grupo a uma federação'; }
+    public function getDescription(): string   { return 'Guruhni federatsiyaga bog\'laydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

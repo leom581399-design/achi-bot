@@ -1,0 +1,20 @@
+<?php
+return [
+    'on'                    => '✅ Yoqilgan',
+    'off'                   => '❌ O\'chirilgan',
+    'usage'                 => "ℹ️ Foydalanish: /welcome on|off|<xabar>\nO'zgaruvchilar: {first} {last} {full} {username} {mention} {id} {count} {chatname}",
+    'usage_goodbye'         => "ℹ️ Foydalanish: /goodbye on|off|<xabar>\nO'zgaruvchilar: {first} {last} {full} {username} {mention} {id} {count} {chatname}",
+    'enabled'               => '✅ Xush kelibsiz xabarlari yoqildi.',
+    'disabled'              => '❌ Xush kelibsiz xabarlari o\'chirildi.',
+    'message_set'           => '✅ Xush kelibsiz xabari yangilandi.',
+    'goodbye_enabled'       => '✅ Xayrlashuv xabarlari yoqildi.',
+    'goodbye_disabled'      => '❌ Xayrlashuv xabarlari o\'chirildi.',
+    'goodbye_message_set'   => '✅ Xayrlashuv xabari yangilandi.',
+    'cleanwelcome_on'       => '✅ CleanWelcome yoqildi — oldingi xabar o\'chiriladi.',
+    'cleanwelcome_off'      => '❌ CleanWelcome o\'chirildi.',
+    'cleanwelcome_usage'    => '❌ Foydalanish: /cleanwelcome on|off',
+    'status'                => "👋 <b>Xush kelibsiz:</b> :status\n📝 Xabar:\n<code>:message</code>",
+    'goodbye_status'        => "👋 <b>Xayrlashuv:</b> :status\n📝 Xabar:\n<code>:message</code>",
+    'default_msg'           => '👋 Xush kelibsiz, {mention}!\nSiz {chatname} guruhining #{count}-a\'zosisiz.',
+    'default_goodbye_msg'   => '👋 {mention} guruhdan chiqib ketdi.',
+];

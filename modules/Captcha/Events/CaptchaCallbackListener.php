@@ -37,7 +37,7 @@ class CaptchaCallbackListener
 
         $chatId       = $cb['message']['chat']['id'] ?? null;
         $clickerId    = $cb['from']['id'] ?? null;
-        $clickerName  = htmlspecialchars($cb['from']['first_name'] ?? 'Usuário');
+        $clickerName  = htmlspecialchars($cb['from']['first_name'] ?? 'Foydalanuvchi');
         $cbQueryId    = $cb['id'] ?? '';
 
         if ($chatId === null || $clickerId === null) return;

@@ -39,7 +39,7 @@ class CaptchaAnswerListener
         $lang   = $this->app->make(LanguageService::class);
         $client = $this->app->make(TelegramClient::class);
         $user   = $update->message['from'] ?? [];
-        $name   = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $name   = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
 
         // Verifica se expirou
         if ($service->isExpired($chatId, $userId)) {

@@ -21,7 +21,7 @@ class TmuteCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'tmute'; }
-    public function getDescription(): string { return 'Silencia temporariamente (ex: /tmute 1h motivo)'; }
+    public function getDescription(): string { return 'Vaqtincha ovozini o\'chiradi (masalan: /tmute 1h sabab)'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

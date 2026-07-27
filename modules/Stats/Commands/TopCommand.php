@@ -19,7 +19,7 @@ class TopCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'top'; }
-    public function getDescription(): string   { return 'Ranking de usuários mais ativos'; }
+    public function getDescription(): string   { return 'Eng faol foydalanuvchilar reytingi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

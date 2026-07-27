@@ -19,7 +19,7 @@ class FiltersCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string      { return 'filters'; }
-    public function getDescription(): string  { return 'Lista os filtros ativos'; }
+    public function getDescription(): string  { return 'Faol filtrlarni ro\'yxatlaydi'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

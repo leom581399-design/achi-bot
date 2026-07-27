@@ -21,7 +21,7 @@ class MuteallCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'muteall'; }
-    public function getDescription(): string { return 'Silencia todos os membros do grupo (/muteall off para desfazer)'; }
+    public function getDescription(): string { return 'Butun guruhning ovozini o\'chiradi (/muteall off - qaytarish)'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

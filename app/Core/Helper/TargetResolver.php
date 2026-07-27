@@ -73,7 +73,7 @@ class TargetResolver
 
     public static function formatName(array $user): string
     {
-        $name = htmlspecialchars($user['first_name'] ?? 'Unknown');
+        $name = htmlspecialchars($user['first_name'] ?? "Noma'lum");
         if (!empty($user['last_name'])) {
             $name .= ' ' . htmlspecialchars($user['last_name']);
         }

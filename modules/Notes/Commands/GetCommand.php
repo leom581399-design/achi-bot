@@ -19,7 +19,7 @@ class GetCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'get'; }
-    public function getDescription(): string { return 'Exibe uma nota do grupo (/get nome)'; }
+    public function getDescription(): string { return 'Guruh eslatmasini ko\'rsatadi (/get nom)'; }
     public function getPermission(): Permission { return Permission::User; }
 
     public function getMiddleware(): array

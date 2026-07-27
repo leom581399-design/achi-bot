@@ -23,7 +23,7 @@ use App\Core\Telegram\TelegramClient;
  */
 class CaptchaService
 {
-    private const WORDS = ['gato','casa','verde','azul','livro','porta','carro','agua','terra','sol'];
+    private const WORDS = ['olma','uzum','tog\'','osmon','kitob','eshik','mashina','suv','yer','quyosh'];
 
     public function __construct(private readonly Application $app) {}
 
@@ -45,7 +45,7 @@ class CaptchaService
             $client->restrictChatMember($chatId, $userId, ['can_send_messages' => false]);
         } catch (\Throwable) {}
 
-        $name = htmlspecialchars($user['first_name'] ?? 'Usuário');
+        $name = htmlspecialchars($user['first_name'] ?? 'Foydalanuvchi');
 
         [$text, $answer, $extra] = match ($type) {
             'math'  => $this->buildMath($name, $timeout),

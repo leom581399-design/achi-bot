@@ -20,7 +20,7 @@ class MuteCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'mute'; }
-    public function getDescription(): string { return 'Silencia um usuário no grupo'; }
+    public function getDescription(): string { return 'Foydalanuvchining ovozini o\'chiradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

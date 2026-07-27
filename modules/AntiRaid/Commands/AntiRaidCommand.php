@@ -23,7 +23,7 @@ class AntiRaidCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'antiraid'; }
-    public function getDescription(): string    { return 'Configura o anti-raid'; }
+    public function getDescription(): string    { return 'Anti-reyd sozlamalarini boshqaradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

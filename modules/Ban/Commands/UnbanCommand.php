@@ -21,7 +21,7 @@ class UnbanCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string     { return 'unban'; }
-    public function getDescription(): string { return 'Remove o ban de um usuário'; }
+    public function getDescription(): string { return 'Foydalanuvchidan banni olib tashlaydi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

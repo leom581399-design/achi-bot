@@ -19,7 +19,7 @@ class LeavefedCommand implements CommandInterface
     public function __construct(private readonly Application $app) {}
 
     public function getCommand(): string        { return 'leavefed'; }
-    public function getDescription(): string   { return 'Desvincula o grupo da federação atual'; }
+    public function getDescription(): string   { return 'Guruhni joriy federatsiyadan chiqaradi'; }
     public function getPermission(): Permission { return Permission::Administrator; }
 
     public function getMiddleware(): array

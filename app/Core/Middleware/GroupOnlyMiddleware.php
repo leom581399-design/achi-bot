@@ -22,7 +22,7 @@ class GroupOnlyMiddleware implements MiddlewareInterface
         if (!$update->isGroup()) {
             $this->app->make(TelegramService::class)->reply(
                 $update,
-                '❌ This command can only be used inside a group.'
+                '❌ Bu buyruq faqat guruhda ishlaydi.'
             );
             return null;
         }
